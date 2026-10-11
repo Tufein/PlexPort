@@ -1,0 +1,24 @@
+# PlexPort op je NAS, met je bestaande qBittorrent.
+services:
+  plexport:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "8765:8765"
+    environment:
+      PLEXPORT_PASSWORD: ${PLEXPORT_PASSWORD:?Vul PLEXPORT_PASSWORD in .env in}
+      DOWNLOADER_TYPE: qbittorrent
+      QBITTORRENT_URL: ${QBITTORRENT_URL:-}
+      DOWNLOADER_ROOT: ${QBITTORRENT_DOWNLOAD_ROOT:-/downloads}
+    volumes:
+      - ./data:/data
+      - type: bind
+        source: ${DOWNLOADS_PATH:-./downloads}
+        target: /downloads
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${MEDIA_PATH:-./media}
+        target: /media
+        bind:
+          create_host_path: false

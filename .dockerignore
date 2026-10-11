@@ -1,0 +1,13 @@
+.git
+.env
+data
+media
+downloads
+tests
+__pycache__
+*.pyc
+android
+verification
+PlexPort 2
+PlexPort-NAS.zip
+PlexPort-TrueNAS.zip

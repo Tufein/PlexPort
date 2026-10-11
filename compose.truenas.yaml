@@ -1,0 +1,53 @@
+# Voorbeeld voor TrueNAS: pas NAS-adres, datasetpaden, UID/GID en wachtwoord aan.
+# Koppel in de qBittorrent-app exact dezelfde downloadbron als /downloads.
+services:
+  plexport:
+    image: python:3.13-slim
+    user: "3000:3000"
+    working_dir: /app
+    command: ["python", "-m", "plexport"]
+    restart: unless-stopped
+    ports:
+      - "8765:8765"
+    environment:
+      PYTHONUNBUFFERED: "1"
+      PYTHONDONTWRITEBYTECODE: "1"
+      PLEXPORT_HOST: "0.0.0.0"
+      PLEXPORT_PORT: "8765"
+      PLEXPORT_PASSWORD: ""
+      PLEXPORT_DATA: /data
+      PLEXPORT_DOWNLOADS: /downloads
+      PLEXPORT_MEDIA: /media
+      DOWNLOADER_TYPE: qbittorrent
+      QBITTORRENT_URL: "http://192.168.1.100:30024"
+      QBITTORRENT_USER: ""
+      DOWNLOADER_ROOT: /downloads
+    volumes:
+      - type: bind
+        source: /mnt/tank/media/Movies/.plexport-app/code
+        target: /app
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: /mnt/tank/media/Movies/.plexport-app/data
+        target: /data
+        bind:
+          create_host_path: false
+      # Voeg .plexport-downloads/* toe aan .plexignore in de filmmap.
+      - type: bind
+        source: /mnt/tank/media/Movies/.plexport-downloads
+        target: /downloads
+        bind:
+          create_host_path: false
+      - type: bind
+        source: /mnt/tank/media/Movies
+        target: /media/Movies
+        bind:
+          create_host_path: false
+      # Gebruik de exacte naam van jouw seriemap.
+      - type: bind
+        source: /mnt/tank/media/Series
+        target: /media/TV Shows
+        bind:
+          create_host_path: false

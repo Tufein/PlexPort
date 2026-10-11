@@ -1,0 +1,9 @@
+.gradle/
+.signing/
+.verification-avd/
+local.properties
+app/build/
+*.jks
+*.keystore
+__pycache__/
+verification/.fixture-*

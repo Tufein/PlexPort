@@ -1,0 +1,37 @@
+# Alternatief: PlexPort met een meegeleverde Transmission-engine.
+services:
+  plexport:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "8765:8765"
+    environment:
+      PLEXPORT_PASSWORD: ${PLEXPORT_PASSWORD:?Vul PLEXPORT_PASSWORD in .env in}
+      DOWNLOADER_TYPE: transmission
+      TRANSMISSION_URL: http://transmission:9091/transmission/rpc
+      TRANSMISSION_USER: ${TRANSMISSION_USER:-plexport}
+      TRANSMISSION_PASSWORD: ${TRANSMISSION_PASSWORD:?Vul TRANSMISSION_PASSWORD in .env in}
+      DOWNLOADER_ROOT: /downloads
+    volumes:
+      - ./data:/data
+      - ${DOWNLOADS_PATH:-./downloads}:/downloads
+      - ${MEDIA_PATH:-./media}:/media
+    depends_on:
+      - transmission
+  transmission:
+    image: lscr.io/linuxserver/transmission:latest
+    restart: unless-stopped
+    environment:
+      PUID: ${PUID:-1000}
+      PGID: ${PGID:-1000}
+      TZ: Europe/Brussels
+      USER: ${TRANSMISSION_USER:-plexport}
+      PASS: ${TRANSMISSION_PASSWORD:?Vul TRANSMISSION_PASSWORD in .env in}
+      HOST_WHITELIST: transmission
+    volumes:
+      - ./data/transmission:/config
+      - ${DOWNLOADS_PATH:-./downloads}:/downloads
+    ports:
+      - "9091:9091"
+      - "51413:51413"
+      - "51413:51413/udp"

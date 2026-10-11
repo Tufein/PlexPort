@@ -1,0 +1,27 @@
+.env
+.env.*
+!.env.example
+data/
+media/
+downloads/
+__pycache__/
+*.pyc
+.DS_Store
+.venv/
+PlexPort-NAS.zip
+PlexPort-TrueNAS.zip
+verification/
+PlexPort 2/
+android/build/
+android/app/build/
+android/verification/
+android/.gradle/
+.signing/
+local.properties
+*.sqlite
+*.sqlite-*
+*.db
+*.jks
+*.keystore
+*.torrent
+*.fastresume
