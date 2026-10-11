@@ -70,7 +70,7 @@ class Transmission:
     def status(self, torrent_id):
         items = self.rpc('torrent-get', {'ids': [torrent_id], 'fields': [
             'hashString', 'name', 'percentDone', 'rateDownload', 'eta', 'status',
-            'error', 'errorString', 'files', 'fileStats', 'metadataPercentComplete', 'sizeWhenDone'
+            'error', 'errorString', 'files', 'fileStats', 'metadataPercentComplete', 'sizeWhenDone', 'peersConnected'
         ]})['torrents']
         if not items:
             raise ValueError('De torrent is niet meer aanwezig in Transmission.')
@@ -81,8 +81,16 @@ class Transmission:
         complete = (t['metadataPercentComplete'] == 1 and t['sizeWhenDone'] > 0
                     and t['percentDone'] >= 1 and t['status'] not in (1, 2)
                     and all(f['bytesCompleted'] == f['length'] for f in files))
+        activity = {0: 'paused', 1: 'queued', 2: 'checking', 3: 'queued',
+                    4: 'downloading', 5: 'seeding', 6: 'seeding'}.get(t['status'], 'unknown')
+        if t['status'] == 4:
+            if t['metadataPercentComplete'] < 1:
+                activity = 'metadata'
+            elif t['rateDownload'] == 0 and t.get('peersConnected', 0) == 0:
+                activity = 'waiting'
         return {'progress': t['percentDone'], 'speed': t['rateDownload'], 'eta': t['eta'],
                 'paused': t['status'] == 0, 'complete': complete,
+                'activity': activity,
                 'files': [{'name': f['name'], 'size': f['length']} for f in files]}
 
     def action(self, torrent_id, action):
@@ -155,10 +163,21 @@ class QBittorrent:
         files = json.loads(self.call('torrents/files?' + urllib.parse.urlencode({'hash': torrent_id})))
         files = [f for f in files if f.get('priority', 1) > 0]
         complete = (t['progress'] >= 1 and t.get('amount_left', 0) == 0 and t.get('size', 0) > 0
-                    and 'checking' not in t['state'].lower() and 'meta' not in t['state'].lower()
+                    and 'checking' not in t['state'].lower() and 'meta' not in t['state'].lower() and t['state'] != 'moving'
                     and all(f['progress'] == 1 for f in files))
+        state = t['state']
+        activity = ('checking' if 'checking' in state.lower() else
+                    'metadata' if 'meta' in state.lower() else
+                    'paused' if state.startswith(('paused', 'stopped')) else
+                    'queued' if state.startswith('queued') else
+                    'waiting' if state == 'stalledDL' else
+                    'moving' if state == 'moving' else
+                    'allocating' if state == 'allocating' else
+                    'seeding' if state.endswith('UP') or state == 'uploading' else
+                    'downloading' if state in ('downloading', 'forcedDL') else 'unknown')
         return {'progress': t['progress'], 'speed': t['dlspeed'], 'eta': t['eta'],
                 'paused': t['state'] in ('pausedDL', 'stoppedDL'), 'complete': complete,
+                'activity': activity,
                 'files': [{'name': f['name'], 'size': f['size']} for f in files]}
 
     def action(self, torrent_id, action):

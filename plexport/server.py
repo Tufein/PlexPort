@@ -12,7 +12,7 @@ import threading
 import urllib.parse
 import webbrowser
 
-from .core import Store, Worker, defaults, friendly_error, new_job, public_job, public_settings
+from .core import Store, Worker, defaults, friendly_error, new_job, public_job, public_settings, require_storage, storage_report
 from .integrations import client, plex_scan, plex_sections, search_source
 
 STATIC = Path(__file__).parent / 'static'
@@ -99,7 +99,7 @@ def create_server(host, port, store, password=''):
                     results.sort(key=lambda r: r['seeders'], reverse=True)
                     self.send({'results': results[:250], 'errors': errors})
                 else:
-                    names = {'/': 'index.html', '/app.js': 'app.js', '/theme.js': 'theme.js', '/style.css': 'style.css', '/favicon.svg': 'favicon.svg', '/plexport.apk': 'plexport.apk'}
+                    names = {'/': 'index.html', '/app.js': 'app.js', '/discovery.js': 'discovery.js', '/theme.js': 'theme.js', '/style.css': 'style.css', '/favicon.svg': 'favicon.svg', '/plexport.apk': 'plexport.apk'}
                     filename = names.get(parsed.path)
                     if not filename:
                         self.send({'error': 'Niet gevonden.'}, 404)
@@ -133,10 +133,16 @@ def create_server(host, port, store, password=''):
                             same = job['torrent_fingerprint'] == existing.get('torrent_fingerprint', existing['link'])
                             if same:
                                 raise ValueError('Deze download staat al in PlexPort.')
+                        require_storage(job['config'], job['kind'], job['expected_bytes'])
                         store.save_job(job)
                     self.send(public_job(job), 201)
                 elif self.path == '/api/action':
                     self.send(worker.action(str(data.get('id', '')), str(data.get('action', ''))))
+                elif self.path == '/api/preflight':
+                    kind = data.get('kind', 'movie')
+                    if kind not in ('movie', 'tv'):
+                        raise ValueError('Kies film of serie.')
+                    self.send(storage_report(store.settings(), kind, data.get('expected_bytes', 0)))
                 elif self.path == '/api/test':
                     target = data.get('target')
                     config = store.settings()
@@ -149,12 +155,13 @@ def create_server(host, port, store, password=''):
                             message = 'Plex bereikbaar · ' + str(len(sections)) + ' bibliotheken'
                             extra = {'sections': sections}
                         elif target == 'storage':
-                            import shutil
-                            paths = [config['downloader']['local_root'], config['library']['movies'], config['library']['tv']]
-                            for path in paths:
-                                if not Path(path).is_dir() or not os.access(path, os.W_OK):
-                                    raise ValueError('Map bestaat niet of is niet schrijfbaar: ' + path)
-                            extra = {'free': shutil.disk_usage(config['library']['movies']).free}
+                            report = storage_report(config)
+                            failed = next((f for f in report['folders'] if not f['ok']), None)
+                            if failed:
+                                checks[target] = {'ok': False, 'message': failed['message']}
+                                self.send({'message': failed['message'], **report}, 400)
+                                return
+                            extra = {'folders': report['folders'], 'free': min(f['free'] for f in report['folders'])}
                             message = 'Download- en Plex-mappen zijn bereikbaar'
                         else:
                             raise ValueError('Onbekende verbinding.')

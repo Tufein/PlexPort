@@ -1,23 +1,27 @@
-# PlexPort-roadmap
+# Wat komt er hierna?
 
-## Beschikbaar
+[Terug naar de startpagina](README.md) · [Wat is al toegevoegd?](CHANGELOG.md)
 
-- Nederlandstalige website met Systeem-, Licht- en Donkermodus.
-- qBittorrent 4.6+/5.x en een Docker-variant met Transmission.
-- Downloadvoortgang, pauzeren, hervatten en gecontroleerd opnieuw proberen.
-- Gedeelde downloadmap en import van voltooide video's en ondertitels naar Plex-mediamappen.
-- Rechtstreekse WatchSoMuch-bron en Torznab-koppelingen via Prowlarr of Jackett.
-- Android-app die dezelfde PlexPort-server, instellingen en taken gebruikt.
-- TrueNAS-installatievoorbeelden, geselecteerde diagnose en backup-hulpmiddelen.
-- Een omkeerbaar icoonhulpmiddel voor TrueNAS 25.10.7.
+## Nu beschikbaar
 
-## Betere downloads
+Een eenvoudige startgids, controle van je verbindingen en mappen, filters voor downloadversies, zoeken in je downloads en duidelijke uitleg wanneer een taak wacht. Ook zijn donkerstand, Android, qBittorrent, Transmission en de import naar je mediamappen beschikbaar.
 
-1. Duidelijker onderscheid tussen downloaden, controleren, wachten op peers, seeding en importeren.
-2. Opslag- en bestandscontroles vóór het starten, met begrijpelijke herstelstappen bij fouten.
-3. Een expliciete migratieflow voor bestaande torrents naar een andere downloader: stoppen, aanwezige bestanden controleren en pas daarna koppelen/hervatten.
-4. Een importkeuze voor rechtstreeks in qBittorrent toegevoegde downloads.
-5. Efficiëntere opslag: hardlinks waar mount- en datasetgrenzen dit toelaten, met zichtbare melding bij kopiëren en beleid voor opruimen na seeding.
-6. Betere herkenning van seriepakketten en een gecontroleerde keuze tussen downloadvarianten.
+## Onderzochte volgende verbeteringen
 
-De app importeert alleen volledige geselecteerde bestanden. RAR/ZIP-archieven worden niet uitgepakt; samples en overige bestanden worden overgeslagen. Automatisch scannen via de Plex-API vereist een geldig token en bibliotheek-ID's. Zonder die koppeling kan Plex zelf automatisch of handmatig scannen.
+Deze ideeën zijn onderzocht, maar nog niet ingebouwd en hebben geen beloofde opleverdatum.
+
+| Idee | Wat heb je eraan? | Wat moet eerst goed geregeld zijn? |
+|---|---|---|
+| **Een bestaande qBittorrent-download toevoegen** | Ook bestanden die je buiten PlexPort downloadde netjes in Plex plaatsen. | Het juiste bestandspad controleren, voorkomen dat dezelfde video dubbel wordt geplaatst en jou de titel laten bevestigen. |
+| **Een vaste voorkeurskwaliteit** | Je hoeft niet telkens Full HD, 4K of een maximumgrootte te kiezen. | Begrijpelijk laten zien waarom een versie wel of niet past, met een keuze wanneer de kwaliteit onbekend is. |
+| **Afleveringen kiezen uit een seizoen** | Alleen downloaden wat je nog nodig hebt. | Bestandsinformatie afwachten, geselecteerde bestanden bijhouden en de juiste afleveringsnummers controleren. |
+| **Zien of extra opslag nodig is** | Vooraf duidelijk weten wanneer een video ruimte bespaart of als kopie wordt opgeslagen. | Werkelijke ondersteuning van hardlinks testen; dezelfde schijf of mapnaam alleen is geen bewijs. |
+| **Een begeleide TrueNAS-installatie** | Minder mapinstellingen en minder kans op een verkeerde koppeling. | Bestaande datasets, rechten en media behouden; geen lege vervangende mappen aanmaken. |
+
+## Waar het onderzoek op is gebaseerd
+
+De [officiële qBittorrent-uitleg](https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-%28qBittorrent-5.0%29) beschrijft afzonderlijke downloadtoestanden, bestandskeuzes en de bediening van bestaande torrents. Dat maakt duidelijkere voortgang en gecontroleerde bestandskeuzes mogelijk.
+
+De [Sonarr-startgids](https://wiki.servarr.com/sonarr/quick-start-guide) werkt met voorkeurskwaliteit en gebruikt hardlinks waar de opslag dat ondersteunt. Dit geeft bruikbare ideeën voor PlexPort, met extra aandacht voor begrijpelijke keuzes en jouw bestaande mediamappen.
+
+[Stel zelf een verbetering voor](https://github.com/Tufein/PlexPort/issues/new?template=idee.yml).

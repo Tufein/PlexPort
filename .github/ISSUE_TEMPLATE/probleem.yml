@@ -1,0 +1,36 @@
+name: Er werkt iets niet
+description: Vertel in gewone woorden wat je ziet. Technische kennis is niet nodig.
+title: "Probleem: "
+body:
+  - type: markdown
+    attributes:
+      value: "Deze melding is openbaar. Deel geen wachtwoorden, tokens of volledige instellingenbestanden."
+  - type: dropdown
+    id: apparaat
+    attributes:
+      label: Waar gebruik je PlexPort?
+      options:
+        - TrueNAS
+        - Andere NAS
+        - Mac
+        - Andere computer
+        - Android
+    validations:
+      required: true
+  - type: textarea
+    id: gebeurd
+    attributes:
+      label: Wat wilde je doen en wat gebeurde er?
+      placeholder: "Bijvoorbeeld: ik klikte op Download starten, maar kreeg een melding over de filmmap."
+    validations:
+      required: true
+  - type: textarea
+    id: melding
+    attributes:
+      label: Welke melding zie je?
+      description: Kopieer alleen de relevante melding en haal persoonlijke gegevens weg.
+  - type: textarea
+    id: controle
+    attributes:
+      label: Wat geeft Alles controleren aan?
+      description: Je vindt deze knop bij Instellingen.

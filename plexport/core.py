@@ -10,6 +10,7 @@ import re
 import shutil
 import sqlite3
 import threading
+import tempfile
 import time
 import urllib.error
 import urllib.parse
@@ -20,6 +21,57 @@ from .integrations import client, http_url, plex_scan
 VIDEO = {'.mkv', '.mp4', '.m4v', '.avi', '.mov', '.ts', '.webm', '.mpg', '.mpeg'}
 SUBTITLE = {'.srt', '.ass', '.ssa', '.vtt', '.sub', '.idx'}
 SECRETS = {'password', 'token', 'api_key'}
+
+
+def download_size(value):
+    if type(value) is not int or not 0 <= value <= 1024 ** 5:
+        raise ValueError('Ongeldige bestandsgrootte. Kies de download opnieuw.')
+    return value
+
+
+def storage_report(config, kind=None, expected_bytes=0):
+    """Probe only configured directories; never create missing mounts."""
+    expected_bytes = download_size(expected_bytes)
+    paths = [('downloads', 'Downloadmap', config['downloader']['local_root'])]
+    if kind != 'tv':
+        paths.append(('movies', 'Filmmap', config['library']['movies']))
+    if kind != 'movie':
+        paths.append(('tv', 'Seriemap', config['library']['tv']))
+    folders = []
+    for key, label, value in paths:
+        entry = {'key': key, 'label': label, 'ok': False, 'free': None}
+        try:
+            path = Path(value)
+            if not path.is_dir():
+                raise ValueError(label + ' is niet bereikbaar. Controleer de mapkoppeling bij Instellingen.')
+            # A permissions flag alone does not verify writable SMB/NFS mounts or ACLs.
+            with tempfile.TemporaryFile(prefix='.plexport-check-', dir=path) as probe:
+                probe.write(b'1')
+                probe.flush()
+                os.fsync(probe.fileno())
+            entry['free'] = shutil.disk_usage(path).free
+            if key == 'downloads' and expected_bytes and entry['free'] < expected_bytes:
+                raise ValueError('De downloadmap heeft te weinig vrije ruimte voor deze versie. Kies een kleiner bestand of maak ruimte vrij.')
+            entry.update(ok=True, message='Bereikbaar en schrijfbaar')
+        except Exception as error:
+            entry['message'] = friendly_error(error)
+        folders.append(entry)
+    warnings = []
+    if not expected_bytes:
+        warnings.append('De bestandsgrootte is nog onbekend. Vrije ruimte is geen garantie dat de hele download past.')
+    elif any(f['key'] != 'downloads' and f['ok'] and f['free'] < expected_bytes for f in folders):
+        warnings.append('De mediamap heeft mogelijk extra ruimte nodig als PlexPort de video moet kopiëren.')
+    return {'ok': all(f['ok'] for f in folders), 'folders': folders, 'warnings': warnings,
+            'expected_bytes': expected_bytes,
+            'note': 'Deze controle test de mappen van PlexPort. De downloader moet dezelfde downloadmap gebruiken. Andere downloads kunnen ondertussen ruimte innemen.'}
+
+
+def require_storage(config, kind, expected_bytes=0):
+    report = storage_report(config, kind, expected_bytes)
+    for folder in report['folders']:
+        if not folder['ok']:
+            raise ValueError(folder['message'])
+    return report
 
 
 def defaults():
@@ -166,6 +218,7 @@ def new_job(config, data):
     kind = data.get('kind', 'movie')
     if kind not in ('movie', 'tv'):
         raise ValueError('Kies film of serie.')
+    expected_bytes = download_size(data.get('expected_bytes', 0))
     title = clean_name(data.get('title', ''))
     link, metainfo = str(data.get('link', '')).strip(), data.get('metainfo', '')
     if bool(link) == bool(metainfo):
@@ -203,7 +256,8 @@ def new_job(config, data):
             'torrent_fingerprint': hashlib.sha256(binary).hexdigest() if metainfo else link,
             'source': str(data.get('source', 'Handmatig'))[:120], 'config': c, 'local_dir': local_dir,
             'remote_dir': remote_dir, 'state': 'queued', 'torrent_id': '', 'created': time.time(),
-            'progress': 0, 'speed': 0, 'eta': -1, 'error': '', 'files_imported': [], 'paused': False}
+            'progress': 0, 'speed': 0, 'eta': -1, 'error': '', 'files_imported': [], 'paused': False,
+            'expected_bytes': expected_bytes, 'activity': 'queued'}
 
 
 def public_job(job):
@@ -242,6 +296,8 @@ def publish_file(source, destination):
         except OSError as e:
             if e.errno not in (errno.EXDEV, errno.EPERM, errno.EACCES, errno.ENOTSUP):
                 raise
+            if shutil.disk_usage(destination.parent).free < source.stat().st_size:
+                raise ValueError('Te weinig vrije ruimte om deze video naar de mediamap te kopiëren. Maak ruimte vrij en kies Opnieuw proberen.')
             shutil.copy2(source, temp)
         # Reserve the final name without replacing an existing library file.
         # Use exclusive creation for shares where hardlinks are unsupported.
@@ -336,6 +392,8 @@ class Worker:
     def step(self, job):
         state = job['state']
         if state == 'queued':
+            if not (job.get('add_started') or job.get('torrent_id')):
+                require_storage(job['config'], job['kind'], job.get('expected_bytes', 0))
             if not Path(job['config']['downloader']['local_root']).is_dir():
                 raise ValueError('De downloadmap bestaat niet of is niet gemount. Controleer de instellingen.')
             Path(job['local_dir']).mkdir(parents=True, exist_ok=True)
@@ -361,6 +419,7 @@ class Worker:
         elif state == 'downloading':
             status = client(job['config']['downloader']).status(job['torrent_id'])
             job.update({k: status[k] for k in ('progress', 'speed', 'eta', 'paused')})
+            job['activity'] = status.get('activity', 'paused' if status['paused'] else 'downloading')
             if status['complete']:
                 job['files'] = status['files']
                 job['state'] = 'importing'

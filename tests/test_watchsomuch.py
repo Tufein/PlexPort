@@ -79,6 +79,9 @@ class WatchSoMuchTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as folder:
             c = defaults()
             c['downloader'].update(url='http://localhost:8080', local_root=folder, remote_root='/downloads')
+            c['library'] = {'movies': str(Path(folder) / 'movies'), 'tv': str(Path(folder) / 'tv')}
+            for path in c['library'].values():
+                Path(path).mkdir()
             job = new_job(c, {'title':'Example', 'link':LINK})
             store = Store(Path(folder) / 'data')
             downloader = Mock()

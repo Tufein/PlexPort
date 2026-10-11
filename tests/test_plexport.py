@@ -8,12 +8,12 @@ from pathlib import Path
 import tempfile
 import threading
 import unittest
-from unittest.mock import patch
+from unittest.mock import patch, Mock
 import urllib.error
 import urllib.parse
 import urllib.request
 
-from plexport.core import Store, Worker, defaults, import_media, merge_settings, new_job, public_job, public_settings, publish_file, safe_file
+from plexport.core import Store, Worker, defaults, import_media, merge_settings, new_job, public_job, public_settings, publish_file, safe_file, storage_report
 from plexport.integrations import QBittorrent, Transmission, plex_sections, search_source
 from plexport.server import create_server
 
@@ -164,6 +164,60 @@ class TempFixture(unittest.TestCase):
 
 
 class CoreTests(TempFixture):
+    def test_storage_reports_each_folder_without_creating_missing_mounts(self):
+        Path(self.config['library']['tv']).rmdir()
+        report = storage_report(self.config)
+        self.assertFalse(report['ok'])
+        self.assertEqual([f['ok'] for f in report['folders']], [True, True, False])
+        self.assertFalse(Path(self.config['library']['tv']).exists())
+        self.assertTrue(storage_report(self.config, 'movie')['ok'])
+        for path in [self.config['downloader']['local_root'], self.config['library']['movies']]:
+            self.assertEqual(list(Path(path).iterdir()), [])
+
+    def test_storage_rejects_known_size_but_explains_unknown_size(self):
+        usage = Mock(free=100)
+        with patch('plexport.core.shutil.disk_usage', return_value=usage):
+            report = storage_report(self.config, 'movie', 101)
+            self.assertFalse(report['ok'])
+            self.assertIn('te weinig', report['folders'][0]['message'])
+            unknown = storage_report(self.config, 'movie')
+            self.assertTrue(unknown['ok'])
+            self.assertIn('onbekend', unknown['warnings'][0])
+        for size in (-1, True, '100', 1024 ** 5 + 1):
+            with self.subTest(size=size), self.assertRaises(ValueError):
+                self.job(expected_bytes=size)
+
+    def test_storage_probes_actual_write_permission(self):
+        with patch('plexport.core.tempfile.TemporaryFile', side_effect=PermissionError()):
+            report = storage_report(self.config, 'movie', 1)
+        self.assertFalse(report['ok'])
+        self.assertIn('Geen toegang', report['folders'][0]['message'])
+
+    def test_worker_catches_missing_destination_before_submitting(self):
+        Path(self.config['library']['movies']).rmdir()
+        store = Store(self.root/'state')
+        job = self.job()
+        store.save_job(job)
+        with patch('plexport.core.client') as downloader:
+            Worker(store).tick()
+            downloader.assert_not_called()
+        failed = store.job(job['id'])
+        self.assertEqual(failed['state'], 'error')
+        self.assertFalse(failed.get('add_started', False))
+        self.assertFalse(Path(job['local_dir']).exists())
+
+    def test_copy_rejects_insufficient_space_and_preserves_source(self):
+        source = self.root/'source'
+        source.write_bytes(b'hello')
+        dest = self.root/'library'/'dest.mkv'
+        with patch('plexport.core.os.link', side_effect=OSError(errno.EXDEV, 'different volume')), patch('plexport.core.shutil.disk_usage', return_value=Mock(free=4)), patch('plexport.core.shutil.copy2') as copier:
+            with self.assertRaisesRegex(ValueError, 'Te weinig'):
+                publish_file(source, dest)
+            copier.assert_not_called()
+        self.assertEqual(source.read_bytes(), b'hello')
+        self.assertFalse(dest.exists())
+        self.assertEqual(list(dest.parent.iterdir()), [])
+
     def test_movie_import_preserves_source_and_is_idempotent(self):
         job = self.job()
         item, source = self.media(job)
@@ -297,6 +351,31 @@ class IntegrationTests(TempFixture):
         paths = [path for method, path, *_ in self.stub.calls if method=='POST']
         self.assertIn('/api/v2/torrents/stop', paths)
         self.assertIn('/api/v2/torrents/resume', paths)
+
+    def test_qbittorrent_reports_waiting_and_never_imports_moving_or_checking(self):
+        c = QBittorrent({'url': self.stub.url})
+        cases = {'metaDL': 'metadata', 'forcedMetaDL': 'metadata', 'stalledDL': 'waiting',
+                 'queuedDL': 'queued', 'stoppedDL': 'paused', 'checkingUP': 'checking',
+                 'moving': 'moving', 'allocating': 'allocating', 'downloading': 'downloading', 'stalledUP': 'seeding'}
+        for state, activity in cases.items():
+            torrent = {'progress': 1, 'amount_left': 0, 'size': 5, 'dlspeed': 0, 'eta': -1, 'state': state}
+            files = [{'name': 'movie.mkv', 'size': 5, 'progress': 1, 'priority': 1}]
+            with self.subTest(state=state), patch.object(c, 'call', side_effect=[json.dumps([torrent]).encode(), json.dumps(files).encode()]):
+                status = c.status('a' * 40)
+                self.assertEqual(status['activity'], activity)
+                if activity in ('checking', 'moving', 'metadata'):
+                    self.assertFalse(status['complete'])
+
+    def test_transmission_explains_metadata_queue_and_waiting(self):
+        c = Transmission({'url': self.stub.url})
+        torrent = {'percentDone': .4, 'rateDownload': 0, 'eta': -1, 'status': 4,
+                   'error': 0, 'errorString': '', 'metadataPercentComplete': 1, 'sizeWhenDone': 5,
+                   'files': [{'name': 'movie.mkv', 'length': 5, 'bytesCompleted': 2}], 'fileStats': [{'wanted': True}], 'peersConnected': 0}
+        for changes, activity in [({}, 'waiting'), ({'metadataPercentComplete': .2}, 'metadata'), ({'status': 3}, 'queued'), ({'status': 2}, 'checking')]:
+            with self.subTest(activity=activity), patch.object(c, 'rpc', return_value={'torrents': [{**torrent, **changes}]}):
+                status = c.status('a' * 40)
+                self.assertEqual(status['activity'], activity)
+                self.assertFalse(status['complete'])
 
     def test_search_and_plex_sections(self):
         items = search_source({'url':self.stub.url+'/torznab', 'api_key':'key', 'name':'Test source'}, 'Film', 'movie')
@@ -543,6 +622,29 @@ class ServerTests(TempFixture):
         settings = self.call('/api/settings')[1]
         self.assertTrue(settings['plex']['token_set'])
         self.assertNotIn('secret', json.dumps(settings))
+
+    def test_preflight_and_submit_do_not_queue_into_missing_destination(self):
+        Path(self.config['library']['movies']).rmdir()
+        code, report = self.call('/api/preflight', {'kind': 'movie', 'expected_bytes': 100})
+        self.assertEqual(code, 200)
+        self.assertFalse(report['ok'])
+        self.assertEqual(len(report['folders']), 2)
+        with self.assertRaises(urllib.error.HTTPError) as refused:
+            self.call('/api/jobs', {'title': 'Film', 'link': MAGNET, 'expected_bytes': 100})
+        self.assertEqual(refused.exception.code, 400)
+        refused.exception.close()
+        self.assertEqual(self.store.jobs(), [])
+
+    def test_preflight_validates_size_and_keeps_secrets_private(self):
+        self.store.save_settings({'downloader': {'password': 'preflight-secret'}})
+        _, report = self.call('/api/preflight', {'kind': 'tv', 'expected_bytes': 100})
+        self.assertTrue(report['ok'])
+        self.assertNotIn('preflight-secret', json.dumps(report))
+        self.assertEqual([f['key'] for f in report['folders']], ['downloads', 'tv'])
+        with self.assertRaises(urllib.error.HTTPError) as invalid:
+            self.call('/api/preflight', {'kind': 'tv', 'expected_bytes': '100'})
+        self.assertEqual(invalid.exception.code, 400)
+        invalid.exception.close()
 
     def test_cross_origin_and_dns_rebinding_rejected(self):
         with self.assertRaises(urllib.error.HTTPError) as blocked:
