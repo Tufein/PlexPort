@@ -1,5 +1,13 @@
 # What's new?
 
+## Download controls — October 11, 2026
+
+- **Stoppen (Stop)** stops the torrent and puts the PlexPort task on hold, including automatic importing. **Hervatten (Resume)** continues it later.
+- **Verwijderen (Remove)** opens a confirmation with a choice to retain or delete download files. Imported Plex media stays in place.
+- The default removes the task from PlexPort and the torrent from the downloader, while retaining downloaded files. A separate list-only option is available when the downloader cannot be reached; it does not stop the torrent.
+- Stopped downloads have their own filter and are excluded from active counts. Controls also appear in the existing Android app after the server update.
+- Cleanup is limited to the task's torrent. File deletion is refused if its download folder has changed. A failed downloader request leaves the task available for retry.
+
 ## Website and Android 1.2 — October 11, 2026
 
 - A dedicated website sign-in page with theme selection, password visibility, clear errors and a sign-out button.

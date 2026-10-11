@@ -201,6 +201,10 @@ class Store:
         with self.lock, self.connect() as db:
             db.execute('INSERT INTO jobs VALUES (?, ?) ON CONFLICT(id) DO UPDATE SET body=excluded.body', (job['id'], json.dumps(job)))
 
+    def delete_job(self, job_id):
+        with self.lock, self.connect() as db:
+            db.execute('DELETE FROM jobs WHERE id=?', (job_id,))
+
 
 def clean_name(value):
     value = re.sub(r'[<>:"/\\|?*\x00-\x1f]', ' ', str(value))
@@ -441,8 +445,12 @@ class Worker:
     def tick(self):
         for item in self.store.jobs():
             with self.lock:
-                job = self.store.job(item['id'])
-                if job['state'] in ('done', 'error'):
+                try:
+                    job = self.store.job(item['id'])
+                except ValueError:
+                    # A user can remove a task after this tick's snapshot was read.
+                    continue
+                if job['state'] in ('done', 'error', 'stopped'):
                     continue
                 try:
                     self.step(job)
@@ -458,10 +466,44 @@ class Worker:
             self.tick()
             self.stop.wait(4)
 
-    def action(self, job_id, action):
+    def action(self, job_id, action, delete_files=False, forget=False):
+        if type(delete_files) is not bool or type(forget) is not bool:
+            raise ValueError('Ongeldige keuze voor verwijderen.')
+        if ((delete_files or forget) and action != 'remove') or (delete_files and forget):
+            raise ValueError('Ongeldige keuze voor verwijderen.')
         with self.lock:
             job = self.store.job(job_id)
-            if action == 'retry':
+            if action in ('stop', 'remove') or (action == 'resume' and job['state'] == 'stopped'):
+                c = None
+                if not forget and (job.get('torrent_id') or job.get('add_started')):
+                    config = copy.deepcopy(job['config']['downloader'])
+                    current = self.store.settings()['downloader']
+                    if config['type'] == current['type'] and config['url'].rstrip('/') == current['url'].rstrip('/'):
+                        for key in ('username', 'password'):
+                            config[key] = current[key]
+                    c = client(config)
+                    if not job.get('torrent_id'):
+                        job['torrent_id'] = c.find(job)
+                        if not job['torrent_id']:
+                            raise ValueError('Je downloader heeft nog geen torrent-ID voor deze taak. Probeer straks opnieuw of controleer de taak in je downloader. Je kunt ook alleen de taak uit de lijst halen.')
+                        self.store.save_job(job)
+                if action == 'remove':
+                    if c:
+                        c.remove(job['torrent_id'], delete_files, job['remote_dir'])
+                    self.store.delete_job(job_id)
+                    return {'removed': True, 'id': job_id, 'files_deleted': delete_files and c is not None, 'forgotten': forget}
+                if c:
+                    c.action(job['torrent_id'], 'pause' if action == 'stop' else 'resume')
+                if action == 'stop':
+                    if job['state'] != 'stopped':
+                        job['resume_state'] = job['state']
+                    job.update(state='stopped', paused=True, speed=0, eta=-1, activity='paused')
+                else:
+                    restored = job.pop('resume_state', 'downloading' if job.get('torrent_id') else 'queued')
+                    if restored == 'queued' and job.get('torrent_id'):
+                        restored = 'downloading'
+                    job.update(state=restored, paused=False, activity='queued' if restored == 'queued' else 'unknown')
+            elif action == 'retry':
                 if job['state'] != 'error':
                     raise ValueError('Deze download heeft geen fout om opnieuw te proberen.')
                 retry_state = job.get('retry_state', 'downloading' if job['torrent_id'] else 'queued')

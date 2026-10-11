@@ -59,7 +59,7 @@ class Stub:
                 elif self.path.startswith('/api/v2/torrents/info'):
                     self.reply([{'hash': 'a' * 40, 'progress': 1 if outer.complete else .4, 'dlspeed': 400,
                                  'eta': 20, 'state': 'stalledUP' if outer.complete else 'downloading',
-                                 'size': 5, 'amount_left': 0 if outer.complete else 3}] if outer.tag else [])
+                                 'save_path': outer.path, 'size': 5, 'amount_left': 0 if outer.complete else 3}] if outer.tag else [])
                 elif self.path.startswith('/api/v2/torrents/files'):
                     self.reply([{'name': 'movie.mkv', 'size': 5, 'progress': 1 if outer.complete else .4, 'priority': 1}])
                 elif self.path == '/library/sections':
@@ -91,6 +91,7 @@ class Stub:
                             result = {'torrents': [{'hashString': 'a' * 40, 'downloadDir': outer.path}] if outer.path else []}
                         else:
                             result = {'torrents': [{'hashString': 'a' * 40, 'percentDone': 1 if outer.complete else .4,
+                                                   'downloadDir': outer.path,
                                                    'rateDownload': 400, 'eta': 20, 'status': 6 if outer.complete else 4,
                                                    'error': 0, 'errorString': '', 'metadataPercentComplete': 1, 'sizeWhenDone': 5,
                                                    'files': [{'name': 'movie.mkv', 'length': 5, 'bytesCompleted': 5 if outer.complete else 2}],
@@ -351,6 +352,36 @@ class IntegrationTests(TempFixture):
         paths = [path for method, path, *_ in self.stub.calls if method=='POST']
         self.assertIn('/api/v2/torrents/stop', paths)
         self.assertIn('/api/v2/torrents/resume', paths)
+
+    def test_remove_contracts_preserve_files_by_default_and_check_download_path(self):
+        for kind in ('qbittorrent', 'transmission'):
+            with self.subTest(kind=kind):
+                self.config['downloader'].update(type=kind, url=self.stub.url if kind == 'qbittorrent' else self.stub.url+'/transmission/rpc')
+                c = QBittorrent(self.config['downloader']) if kind == 'qbittorrent' else Transmission(self.config['downloader'])
+                c.test()  # Establish Transmission's session before counting removal requests.
+                job = self.job()
+                self.stub.path = job['remote_dir']
+                self.stub.tag = 'plexport-'+job['id']
+                tid = 'a'*40
+                c.remove(tid)
+                c.remove(tid, True, job['remote_dir'])
+                before = len(self.stub.calls)
+                with self.assertRaisesRegex(ValueError, 'downloadmap is veranderd'):
+                    c.remove(tid, True, '/media/Movies')
+                with self.assertRaisesRegex(ValueError, 'één download'):
+                    c.remove('all', True, job['remote_dir'])
+                with self.assertRaises(ValueError):
+                    c.remove(tid+'|'+tid)
+                if kind == 'qbittorrent':
+                    calls = [urllib.parse.parse_qs(body.decode()) for method,path,body in self.stub.calls if method=='POST' and path=='/api/v2/torrents/delete']
+                    self.assertEqual([data['deleteFiles'] for data in calls], [['false'], ['true']])
+                    self.assertTrue(all(data['hashes']==[tid] for data in calls))
+                else:
+                    calls = [json.loads(body)['arguments'] for method,path,body in self.stub.calls if method=='POST' and path=='/transmission/rpc' and json.loads(body)['method']=='torrent-remove']
+                    self.assertEqual([data['delete-local-data'] for data in calls], [False, True])
+                    self.assertTrue(all(data['ids']==[tid] for data in calls))
+                # The rejected cleanup performs a lookup, but never a deletion.
+                self.assertNotEqual(len(self.stub.calls), before)
 
     def test_qbittorrent_reports_waiting_and_never_imports_moving_or_checking(self):
         c = QBittorrent({'url': self.stub.url})
@@ -622,6 +653,20 @@ class ServerTests(TempFixture):
         settings = self.call('/api/settings')[1]
         self.assertTrue(settings['plex']['token_set'])
         self.assertNotIn('secret', json.dumps(settings))
+
+    def test_http_stop_resume_remove_and_strict_cleanup_options(self):
+        _, job = self.call('/api/jobs', {'title':'Controls', 'link':MAGNET})
+        self.assertEqual(self.call('/api/action', {'id':job['id'], 'action':'stop'})[1]['state'], 'stopped')
+        self.assertEqual(self.call('/api/action', {'id':job['id'], 'action':'resume'})[1]['state'], 'queued')
+        for bad in ({'delete_files':'false'}, {'forget':'false'}, {'forget':True,'delete_files':True}):
+            with self.assertRaises(urllib.error.HTTPError) as error:
+                self.call('/api/action', {'id':job['id'], 'action':'remove', **bad})
+            self.assertEqual(error.exception.code, 400)
+            error.exception.close()
+        result = self.call('/api/action', {'id':job['id'], 'action':'remove'})[1]
+        self.assertTrue(result['removed'])
+        self.assertFalse(result['files_deleted'])
+        self.assertEqual(self.call('/api/status')[1]['jobs'], [])
 
     def test_preflight_and_submit_do_not_queue_into_missing_destination(self):
         Path(self.config['library']['movies']).rmdir()

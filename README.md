@@ -20,7 +20,7 @@ PlexPort puts completed videos in the right media folder.
 ## What can you do with it?
 
 - **Find and choose.** Filter by Full HD, 4K, file size and the number of people sharing a file.
-- **Follow downloads.** See what is happening, pause a download and understand why a task is waiting.
+- **Follow downloads.** See what is happening, stop or resume a download and understand why a task is waiting. Remove unwanted tasks, with an optional choice to delete downloaded files.
 - **Organize movies and shows.** Completed videos and subtitles go to your chosen Plex folders.
 - **Catch problems early.** Check connections and folders with one button. See available space before starting a download.
 - **Use your phone.** The Android app opens the same PlexPort server and the same downloads.

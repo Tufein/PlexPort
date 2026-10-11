@@ -1,6 +1,7 @@
 import base64
 import http.cookiejar
 import json
+import re
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -22,6 +23,17 @@ def request(url, data=None, headers=None, opener=None, with_status=False, timeou
         if len(result) > 12 * 1024 * 1024:
             raise ValueError('Antwoord van de server is te groot.')
         return (response.status, result) if with_status else result
+
+
+def single_torrent(torrent_id):
+    if not isinstance(torrent_id, str) or not re.fullmatch(r'[a-fA-F0-9]{40}|[a-fA-F0-9]{64}', torrent_id):
+        raise ValueError('Ongeldig torrent-ID. Er kan alleen één download worden gewijzigd.')
+    return torrent_id
+
+
+def same_download_dir(actual, expected):
+    if not expected or actual.replace('\\', '/').rstrip('/') != expected.replace('\\', '/').rstrip('/'):
+        raise ValueError('De downloadmap is veranderd. Verwijder de bestanden rechtstreeks in je downloader; PlexPort heeft niets gewist.')
 
 
 class Transmission:
@@ -51,12 +63,18 @@ class Transmission:
     def test(self):
         return 'Transmission ' + self.rpc('session-get').get('version', '')
 
-    def add(self, job):
-        # Recover an accepted request after a process interruption before the ID was saved.
+    def find(self, job):
         existing = self.rpc('torrent-get', {'fields': ['hashString', 'downloadDir']})['torrents']
         matches = [t for t in existing if t['downloadDir'].rstrip('/') == job['remote_dir'].rstrip('/')]
-        if matches:
-            return matches[0]['hashString']
+        if len(matches) > 1:
+            raise ValueError('Er staan meerdere torrents in deze downloadmap. Controleer je downloader.')
+        return matches[0]['hashString'] if matches else ''
+
+    def add(self, job):
+        # Recover an accepted request after a process interruption before the ID was saved.
+        existing = self.find(job)
+        if existing:
+            return existing
         args = {'download-dir': job['remote_dir'], 'paused': False}
         if job.get('metainfo'):
             args['metainfo'] = job['metainfo']
@@ -94,7 +112,16 @@ class Transmission:
                 'files': [{'name': f['name'], 'size': f['length']} for f in files]}
 
     def action(self, torrent_id, action):
-        self.rpc('torrent-stop' if action == 'pause' else 'torrent-start', {'ids': [torrent_id]})
+        self.rpc('torrent-stop' if action == 'pause' else 'torrent-start', {'ids': [single_torrent(torrent_id)]})
+
+    def remove(self, torrent_id, delete_files=False, expected_dir=None):
+        torrent_id = single_torrent(torrent_id)
+        if delete_files:
+            items = self.rpc('torrent-get', {'ids': [torrent_id], 'fields': ['hashString', 'downloadDir']})['torrents']
+            if not items:
+                raise ValueError('De torrent is al uit Transmission verwijderd. Verwijder de overgebleven bestanden zelf of kies bestanden behouden.')
+            same_download_dir(items[0]['downloadDir'], expected_dir)
+        self.rpc('torrent-remove', {'ids': [torrent_id], 'delete-local-data': delete_files})
 
 
 class QBittorrent:
@@ -121,11 +148,18 @@ class QBittorrent:
     def test(self):
         return 'qBittorrent ' + self.call('app/version').decode()
 
-    def add(self, job):
+    def find(self, job):
         tag = 'plexport-' + job['id']
         existing = json.loads(self.call('torrents/info?' + urllib.parse.urlencode({'tag': tag})))
+        if len(existing) > 1:
+            raise ValueError('Er staan meerdere torrents bij deze taak. Controleer qBittorrent.')
+        return existing[0]['hash'] if existing else ''
+
+    def add(self, job):
+        tag = 'plexport-' + job['id']
+        existing = self.find(job)
         if existing:
-            return existing[0]['hash']
+            return existing
         data = {'savepath': job['remote_dir'], 'tags': tag, 'autoTMM': 'false'}
         if job.get('metainfo'):
             boundary = 'PlexPort' + job['id']
@@ -181,9 +215,19 @@ class QBittorrent:
                 'files': [{'name': f['name'], 'size': f['size']} for f in files]}
 
     def action(self, torrent_id, action):
+        torrent_id = single_torrent(torrent_id)
         version = self.call('app/version').decode().lstrip('v')
         endpoint = ('stop' if action == 'pause' else 'start') if int(version.split('.')[0]) >= 5 else ('pause' if action == 'pause' else 'resume')
         self.call('torrents/' + endpoint, {'hashes': torrent_id})
+
+    def remove(self, torrent_id, delete_files=False, expected_dir=None):
+        torrent_id = single_torrent(torrent_id)
+        if delete_files:
+            items = json.loads(self.call('torrents/info?' + urllib.parse.urlencode({'hashes': torrent_id})))
+            if not items:
+                raise ValueError('De torrent is al uit qBittorrent verwijderd. Verwijder de overgebleven bestanden zelf of kies bestanden behouden.')
+            same_download_dir(items[0].get('save_path', ''), expected_dir)
+        self.call('torrents/delete', {'hashes': torrent_id, 'deleteFiles': 'true' if delete_files else 'false'})
 
 
 def client(config):

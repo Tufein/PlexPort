@@ -242,7 +242,8 @@ def create_server(host, port, store, password=''):
                         store.save_job(job)
                     self.send(public_job(job), 201)
                 elif self.path == '/api/action':
-                    self.send(worker.action(str(data.get('id', '')), str(data.get('action', ''))))
+                    self.send(worker.action(str(data.get('id', '')), str(data.get('action', '')),
+                                            data.get('delete_files', False), data.get('forget', False)))
                 elif self.path == '/api/preflight':
                     kind = data.get('kind', 'movie')
                     if kind not in ('movie', 'tv'):
