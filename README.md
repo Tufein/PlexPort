@@ -1,76 +1,76 @@
 <div align="center">
 
-<img src="assets/PlexPort.png" alt="PlexPort-icoon" width="90">
+<img src="assets/PlexPort.png" alt="PlexPort icon" width="90">
 
 # PlexPort
 
-### Van een download naar je Plex-bibliotheek, op één plek.
+### From download to your Plex library, in one place.
 
-Zoek een film of serie, kies een versie en volg de download.
-PlexPort zet de voltooide video's in de juiste mediamap.
+Find a movie or TV show, choose a version and follow the download.
+PlexPort puts completed videos in the right media folder.
 
-[Aan de slag](#aan-de-slag) · [Zo gebruik je het](docs/GEBRUIKEN.md) · [Hulp nodig?](docs/HULP.md) · [Android downloaden](https://github.com/Tufein/PlexPort/raw/refs/heads/main/android/dist/PlexPort-1.1.0.apk)
+[Get started](#get-started) · [How to use it](docs/GEBRUIKEN.md) · [Need help?](docs/HULP.md) · [Download Android app](https://github.com/Tufein/PlexPort/raw/refs/heads/main/android/dist/PlexPort-1.1.0.apk)
 
 </div>
 
-![Het zoekscherm van PlexPort met eenvoudige filters](docs/images/ontdekken.png)
+![PlexPort search screen with quality, size and source filters](docs/images/ontdekken.png)
 
-*Voorbeeldscherm met demonstratietitels. Je eigen zoekresultaten komen uit de bronnen die je toevoegt.*
+*Example screen with demo titles. Your search results come from the sources you add. The app currently uses Dutch labels; the guides explain which buttons to choose.*
 
-## Wat kun je ermee?
+## What can you do with it?
 
-- **Zoeken en kiezen.** Filter op Full HD, 4K, bestandsgrootte en het aantal mensen dat een bestand deelt.
-- **Downloads volgen.** Zie wat er gebeurt, pauzeer een download en herken waarom een taak wacht.
-- **Films en series ordenen.** Voltooide video's en ondertitels gaan naar je ingestelde Plex-mappen.
-- **Problemen eerder zien.** Controleer de verbindingen en mappen met één knop. Voor een download zie je de beschikbare ruimte.
-- **Op je telefoon gebruiken.** De Android-app opent dezelfde PlexPort-server met dezelfde downloads.
-- **Je eigen uiterlijk kiezen.** Licht, donker of de instelling van je apparaat.
+- **Find and choose.** Filter by Full HD, 4K, file size and the number of people sharing a file.
+- **Follow downloads.** See what is happening, pause a download and understand why a task is waiting.
+- **Organize movies and shows.** Completed videos and subtitles go to your chosen Plex folders.
+- **Catch problems early.** Check connections and folders with one button. See available space before starting a download.
+- **Use your phone.** The Android app opens the same PlexPort server and the same downloads.
+- **Choose your look.** Light, dark or your device's setting.
 
-## Wat heb je nodig?
+## What do you need?
 
-**Plex**, om je films en series te bekijken. **qBittorrent of Transmission**, om bestanden te downloaden. En een computer of **NAS** — je opslagapparaat op het thuisnetwerk — waarop PlexPort kan blijven draaien.
+**Plex** to watch your movies and shows, **qBittorrent or Transmission** to download files, and a computer or **NAS** — a storage device on your home network — that can keep PlexPort running.
 
-PlexPort verbindt die onderdelen. Het vervangt Plex en je downloader niet. Je kiest zelf je zoekbronnen; je hoeft geen abonnement op PlexPort af te sluiten.
+PlexPort connects these parts. It does not replace Plex or your downloader. You choose your own search sources, and there is no PlexPort subscription.
 
-## Aan de slag
+## Get started
 
-Kies de rij die bij jouw situatie past:
+Choose the option that matches your setup:
 
-| Ik wil PlexPort gebruiken op… | Begin hier |
+| I want to use PlexPort on… | Start here |
 |---|---|
-| **TrueNAS 25.10** | [Installeren op TrueNAS](docs/START-TRUENAS.md) |
-| **Een andere NAS of een computer met Docker** | [Installeren op een andere NAS](INSTALLATIE-NAS.md) |
-| **Mijn Mac** | [Starten op een Mac](docs/START-MAC.md) |
-| **Mijn Android-telefoon** | [Android installeren](docs/START-ANDROID.md) — PlexPort moet al op je NAS of computer draaien |
+| **TrueNAS 25.10** | [Install on TrueNAS](docs/START-TRUENAS.md) |
+| **Another NAS or a computer with Docker** | [Install on another NAS](INSTALLATIE-NAS.md) |
+| **My Mac** | [Start on a Mac](docs/START-MAC.md) |
+| **My Android phone** | [Install Android app](docs/START-ANDROID.md) — PlexPort must already be running on your NAS or computer |
 
-[Download de appbestanden als ZIP](https://github.com/Tufein/PlexPort/archive/refs/heads/main.zip). Pak het bestand eerst uit. **PlexPort is nog geen app die je met één klik uit de TrueNAS-appwinkel installeert.** De eerste installatie vraagt eenmalig om je serveradres en mapinstellingen; de TrueNAS-handleiding helpt je daarbij.
+[Download the app files as a ZIP](https://github.com/Tufein/PlexPort/archive/refs/heads/main.zip) and extract them first. **PlexPort is not yet a one-click app in the TrueNAS app catalog.** Initial setup needs your server address and folder settings; the TrueNAS guide walks you through them.
 
-## Je eerste download in drie stappen
+## Your first download in three steps
 
-1. **Instellen:** open PlexPort → **Instellingen**, vul je downloader en mappen in en klik **Alles controleren**. Voeg een zoekbron toe als je in de app wilt zoeken.
-2. **Kiezen:** ga naar **Ontdekken**, zoek een titel en gebruik de filters om een geschikte versie te vinden. Klik **Kiezen** en controleer de titel en bestemming.
-3. **Volgen:** klik **Download starten**. Onder **Downloads** zie je de voortgang. Zodra de video is geplaatst, verschijnt de taak in **Bibliotheek**.
+1. **Set up:** open **Instellingen (Settings)**, enter your downloader and folders, then click **Alles controleren (Check everything)**. Add a search source if you want to search inside the app.
+2. **Choose:** open **Ontdekken (Discover)**, search for a title and use the filters to find a suitable version. Click **Kiezen (Choose)** and check the title and destination.
+3. **Follow:** click **Download starten (Start download)**. Track progress under **Downloads**. Once the video has been placed, the task appears under **Bibliotheek (Library)**.
 
-Je kunt ook meteen **Download toevoegen** gebruiken voor een eigen link of torrentbestand. Download alleen media die je mag downloaden en delen.
+You can also use **Download toevoegen (Add download)** for your own link or torrent file. Only download and share media you have permission to use.
 
-## Goed om te weten
+## Good to know
 
-- De downloadmap moet voor PlexPort en je downloader naar **dezelfde bestanden** verwijzen. Dit is de belangrijkste instelling.
-- Plex moet de ingestelde film- en seriemappen kunnen lezen. Een Plex-adres alleen is daarvoor niet genoeg.
-- Downloads blijven staan om ze te kunnen delen. Als kopiëren nodig is, kan dat extra ruimte kosten.
-- De ruimtecontrole is een momentopname. Voor een eigen link is de bestandsgrootte nog onbekend.
-- **Bibliotheek** toont wat PlexPort heeft geplaatst. Dat is niet je volledige Plex-verzameling.
-- Alleen downloads die je in PlexPort toevoegt worden automatisch verwerkt. De app pakt geen ZIP- of RAR-bestanden uit.
+- PlexPort and your downloader must see **the same download files**. This is the most important setting.
+- Plex needs read access to the movie and TV folders. Entering a Plex server address alone is not enough.
+- Original downloads stay in place for sharing. If files need to be copied, they may use extra space.
+- The space check is a snapshot. The file size of a manually added link is not known in advance.
+- **Bibliotheek (Library)** shows files imported by PlexPort, not your entire Plex collection.
+- Only downloads added through PlexPort are processed automatically. The app does not extract ZIP or RAR archives.
 
-## Er gaat iets mis
+## Something isn't working
 
-[Open de hulp bij veelvoorkomende problemen](docs/HULP.md). Staat jouw probleem er niet bij? [Meld een probleem](https://github.com/Tufein/PlexPort/issues/new?template=probleem.yml) en vertel wat je ziet. Deel geen wachtwoorden of persoonlijke toegangsgegevens.
+[Read the troubleshooting guide](docs/HULP.md). If your problem is not covered, [report it](https://github.com/Tufein/PlexPort/issues/new?template=probleem.yml) and describe what you see. Do not share passwords or private access details.
 
-Een idee voor een verbetering? [Stel een functie voor](https://github.com/Tufein/PlexPort/issues/new?template=idee.yml).
+Have an idea? [Suggest a feature](https://github.com/Tufein/PlexPort/issues/new?template=idee.yml).
 
 <details>
-<summary>Voor beheerders en ontwikkelaars</summary>
+<summary>For administrators and developers</summary>
 
-[Technische uitleg](docs/TECHNISCH.md) · [TrueNAS-mapinstellingen](INSTALLATIE-TRUENAS.md) · [Android bouwen](android/README.md) · [Meewerken](CONTRIBUTING.md) · [Nieuwe functies](CHANGELOG.md) · [Toekomstplannen](ROADMAP.md)
+[Technical guide](docs/TECHNISCH.md) · [TrueNAS folder setup](INSTALLATIE-TRUENAS.md) · [Build Android app](android/README.md) · [Contribute](CONTRIBUTING.md) · [What's new](CHANGELOG.md) · [Roadmap](ROADMAP.md)
 
 </details>

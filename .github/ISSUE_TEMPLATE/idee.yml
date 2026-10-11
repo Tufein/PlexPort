@@ -1,16 +1,16 @@
-name: Ik heb een idee
-description: Welke verbetering zou PlexPort voor jou makkelijker maken?
-title: "Idee: "
+name: Suggest a feature
+description: What would make PlexPort easier for you to use?
+title: "Idea: "
 body:
   - type: textarea
     id: behoefte
     attributes:
-      label: Wat zou je graag kunnen doen?
-      placeholder: Vertel wat je wilt bereiken. Je hoeft geen technische oplossing te bedenken.
+      label: What would you like to do?
+      placeholder: Describe what you want to achieve. You do not need to design a technical solution.
     validations:
       required: true
   - type: textarea
     id: vandaag
     attributes:
-      label: Hoe doe je dat nu?
-      description: Waar loop je tegenaan?
+      label: How do you do this today?
+      description: What gets in your way?

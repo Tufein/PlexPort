@@ -1,22 +1,28 @@
-# Wijzigingen
+# What's new?
 
-## Android 1.1.0 — 11 oktober 2026
+## English documentation — October 11, 2026
 
-- Een nieuwe ondertekende APK, te installeren als update over de vorige versie. Je opgeslagen NAS-adres blijft behouden.
-- De app laadt de vernieuwde bediening van PlexPort op je NAS, met zoekfilters, downloadstatussen en opslagcontroles.
-- Het bouwscript gebruikt voortaan automatisch het huidige versienummer voor de APK-bestandsnaam.
+- The GitHub home page, setup guides, troubleshooting, roadmap and contribution instructions are now in English.
+- Problem and feature request forms now accept English reports with English prompts.
+- Guides explain the Dutch labels used by the current app interface.
 
-## 11 oktober 2026 · Website 1.1
+## Android 1.1.0 — October 11, 2026
 
-- Een eenvoudige GitHub-startpagina met aparte handleidingen voor TrueNAS, Mac en Android.
-- Een checklist die je helpt de downloader, mappen en zoekbronnen in te stellen.
-- **Alles controleren** test de opgeslagen verbindingen en de schrijftoegang tot je mappen.
-- Zoekfilters voor HD, Full HD en 4K, maximale bestandsgrootte, bron en aantal delers.
-- Sorteer versies op naam, grootte of delers.
-- Zoek in je eigen downloads en filter op onderweg, aandacht nodig of in je mediamap.
-- Duidelijke meldingen voor voorbereiden, controleren, wachten en verplaatsen.
-- Voortgangsbalken tonen nu het juiste percentage, met toegankelijke voortgangsinformatie.
-- Een controle van downloadmap, bestemming en vrije ruimte voor je start. Een bekende download die te groot is wordt tegengehouden.
-- Een ruimtecontrole vóór een noodzakelijke kopie naar de mediamap.
+- A new signed APK that installs over the previous version. Your saved NAS address is preserved.
+- The app loads the updated PlexPort interface from your NAS, including search filters, download statuses and storage checks.
+- The build script now uses the current version number automatically for the APK filename.
 
-Deze bediening wordt door de server geleverd en verschijnt ook in de bestaande Android-app. Bijwerken gebeurt via de appbestanden; bestaande instellingen en taken blijven in de instellingenmap.
+## Website 1.1 — October 11, 2026
+
+- A simpler GitHub home page with separate guides for TrueNAS, Mac and Android.
+- A checklist to help set up your downloader, folders and search sources.
+- **Alles controleren (Check everything)** tests saved connections and folder write access.
+- Search filters for HD, Full HD, 4K, maximum size, source and seeders.
+- Sort versions by name, size or seeders.
+- Search your downloads and filter for active tasks, problems or imported media.
+- Clearer messages for preparing, checking, waiting and moving files.
+- Progress bars show the correct percentage and expose accessible progress information.
+- Download folder, destination and free-space checks before starting. Known downloads that are too large are blocked.
+- An extra space check before a required copy to the media folder.
+
+The server supplies these controls, so they also appear in the existing Android app. Update the app files while keeping the settings folder to preserve settings and tasks.

@@ -1,14 +1,14 @@
-# PlexPort starten op een Mac
+# Start PlexPort on a Mac
 
-[Terug naar de startpagina](../README.md)
+[Back to the main page](../README.md)
 
-Je hebt **Python 3.11 of nieuwer**, **qBittorrent of Transmission** en bereikbare Plex-mediamappen nodig. Is Python nog niet geïnstalleerd? Je kunt het downloaden van [python.org](https://www.python.org/downloads/macos/).
+You need **Python 3.11 or newer**, **qBittorrent or Transmission**, and accessible Plex media folders. If Python is not installed, get it from [python.org](https://www.python.org/downloads/macos/).
 
-1. [Download PlexPort](https://github.com/Tufein/PlexPort/archive/refs/heads/main.zip) en pak het ZIP-bestand uit.
-2. Dubbelklik op **Start PlexPort.command** in de uitgepakte map. De browser opent PlexPort. Houd het bijbehorende terminalvenster open zolang de app downloads moet verwerken.
-3. Open **Instellingen** en vul je downloader en mappen in. Staat je media op een NAS? Verbind dan eerst in Finder met de gedeelde map.
-4. Klik **Alles controleren** en voeg desgewenst een zoekbron toe.
+1. [Download PlexPort](https://github.com/Tufein/PlexPort/archive/refs/heads/main.zip) and extract the ZIP.
+2. Double-click **Start PlexPort.command** in the extracted folder. PlexPort opens in your browser. Keep its terminal window open while the app needs to process downloads.
+3. Open **Instellingen (Settings)** and enter your downloader and folders. If your media is on a NAS, connect to the shared folder in Finder first.
+4. Click **Alles controleren (Check everything)** and optionally add a search source.
 
-[Ga verder met je eerste download](GEBRUIKEN.md).
+[Continue with your first download](GEBRUIKEN.md).
 
-Als macOS het startbestand blokkeert, controleer eerst dat je het uit deze repository hebt gedownload. De [technische uitleg](TECHNISCH.md#starten-op-deze-mac) bevat de alternatieve startopdracht. De standaard Mac-installatie is alleen op die Mac bereikbaar. Voor gebruik vanaf je telefoon is een bereikbare, beveiligde serverinstallatie nodig.
+If macOS blocks the launcher, first check that you downloaded it from this repository. The [technical guide](TECHNISCH.md#start-on-a-mac) includes an alternative command. The default Mac setup is accessible only on that Mac. Using it from your phone requires a reachable server installation with authentication.

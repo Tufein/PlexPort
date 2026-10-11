@@ -1,47 +1,47 @@
-# PlexPort installeren op TrueNAS
+# Install PlexPort on TrueNAS
 
-[Terug naar de startpagina](../README.md)
+[Back to the main page](../README.md)
 
-Deze handleiding is voor **TrueNAS 25.10**. qBittorrent en Plex moeten al werken. De eerste installatie vraagt wat mapinstellingen; daarna bedien je PlexPort in je browser of op Android.
+This guide is for **TrueNAS 25.10**. qBittorrent and Plex should already be working. Initial setup needs some folder settings; after that you control PlexPort in your browser or on Android. The app's buttons currently have Dutch labels, shown alongside their English meaning below.
 
-## 1. Verzamel drie dingen
+## 1. Gather three things
 
-| Dit heb je nodig | Waar vind je het? | Voorbeeld |
+| What you need | Where to find it | Example |
 |---|---|---|
-| Het adres van je NAS | Het adres waarmee je TrueNAS in je browser opent | `192.168.1.100` |
-| De downloadmap | De opslaginstellingen van je qBittorrent-app | `/mnt/tank/downloads` |
-| De film- en seriemap | De mappen die je Plex-bibliotheken gebruiken | `/mnt/tank/media/Movies` en `/mnt/tank/media/Series` |
+| Your NAS address | The address you use to open TrueNAS in your browser | `192.168.1.100` |
+| The download folder | Your qBittorrent app's storage settings | `/mnt/tank/downloads` |
+| The movie and TV folders | The folders used by your Plex libraries | `/mnt/tank/media/Movies` and `/mnt/tank/media/Series` |
 
-De voorbeelden zijn geen waarden die je zomaar moet overnemen. **Hoofdletters tellen mee:** `Movies` en `movies` kunnen verschillende mappen zijn. Maak geen lege vervangende map als je films al ergens staan.
+These are examples, not values to copy without checking. **Capital letters matter:** `Movies` and `movies` can be different folders. Do not create an empty replacement folder if your media is already stored elsewhere.
 
-## 2. Download en plaats PlexPort
+## 2. Download and place PlexPort
 
-[Download de appbestanden](https://github.com/Tufein/PlexPort/archive/refs/heads/main.zip) en pak ze uit. Plaats ze op je NAS in een aparte appmap. Bewaar de instellingen in een afzonderlijke map zodat je ze later bij een update kunt behouden.
+[Download the app files](https://github.com/Tufein/PlexPort/archive/refs/heads/main.zip) and extract them. Place them in a separate app folder on your NAS. Keep settings in a separate folder so you can retain them during updates.
 
-Hier heb je de eenmalige technische stap nodig: [volg de mapindeling en het installatievoorbeeld](../INSTALLATIE-TRUENAS.md#mappen-en-gebruiker). Daar staat welke map je waar koppelt en welke gebruiker toegang nodig heeft.
+This is the one-time technical step: [follow the folder layout and installation example](../INSTALLATIE-TRUENAS.md#folders-and-app-user). It explains which folders to connect and which user needs access.
 
-## 3. Installeer de app in TrueNAS
+## 3. Install in TrueNAS
 
-1. Open **Apps** in TrueNAS en kies de installatieoptie voor een eigen app met YAML. YAML is hier het tekstbestand met de appinstellingen.
-2. Gebruik `compose.yaml` uit de uitgepakte map. Pas de voorbeeldadressen, mappen en appgebruiker aan volgens de [installatiehandleiding](../INSTALLATIE-TRUENAS.md#plexport-installeren).
-3. Vul bij `PLEXPORT_PASSWORD` een eigen PlexPort-wachtwoord in en sla op.
-4. Wacht tot de app **Running** aangeeft.
+1. Open **Apps** in TrueNAS and choose the option to install a custom app using YAML. Here, YAML is the text file containing the app's settings.
+2. Use `compose.yaml` from the extracted folder. Adjust the example addresses, folders and app user using the [installation guide](../INSTALLATIE-TRUENAS.md#install-plexport).
+3. Enter your own PlexPort password under `PLEXPORT_PASSWORD` and save.
+4. Wait until the app shows **Running**.
 
 ## 4. Open PlexPort
 
-Open `http://JE-NAS-ADRES:8765` in je browser. Vervang `JE-NAS-ADRES` door je eigen adres. Meld aan met **admin** en het PlexPort-wachtwoord dat je zojuist hebt gekozen.
+Open `http://YOUR-NAS-ADDRESS:8765` in your browser, replacing `YOUR-NAS-ADDRESS` with your own address. Sign in as **admin** with the PlexPort password you just chose.
 
-Open **Instellingen**:
+Open **Instellingen (Settings)**:
 
-1. Kies qBittorrent en vul het adres van zijn bedieningspagina en de bijbehorende aanmelding in.
-2. Vul de downloadmap, filmmap en seriemap in zoals de installatiehandleiding aangeeft.
-3. Klik **Alles controleren**. Herstel eventuele meldingen vóór je een download start.
-4. Voeg een zoekbron toe en sla op. Je kunt ook zonder zoekbron een eigen link gebruiken.
+1. Choose qBittorrent and enter its Web UI address and login details.
+2. Enter the download, movie and TV folders as described in the installation guide.
+3. Click **Alles controleren (Check everything)**. Fix any reported problems before starting a download.
+4. Add a search source and save. You can also add your own link without a search source.
 
-[Ga verder met je eerste download](GEBRUIKEN.md).
+[Continue with your first download](GEBRUIKEN.md).
 
-## Bij een update
+## Updating
 
-Stop PlexPort, bewaar de bestaande instellingenmap en vervang alleen de appbestanden in de codemap. Start PlexPort opnieuw en klik **Alles controleren**. Je instellingen, taken en media hoeven niet te worden verwijderd. De Android-app laadt de nieuwe bediening van de server; voor deze websiteverbeteringen is geen nieuwe APK nodig.
+Stop PlexPort, keep the existing settings folder and replace only the app files in the code folder. Start PlexPort again and click **Alles controleren (Check everything)**. You do not need to remove settings, tasks or media. Android loads the interface from the server, so these website improvements do not require a new APK.
 
-Zie je een fout met `EFAULT`? [Open de hulp](HULP.md#truenas-zegt-efault-of-de-app-start-niet).
+Seeing `EFAULT`? [Read the troubleshooting guide](HULP.md#truenas-shows-efault-or-the-app-wont-start).

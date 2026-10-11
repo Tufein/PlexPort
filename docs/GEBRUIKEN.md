@@ -1,50 +1,52 @@
-# Je eerste film of serie toevoegen
+# Add your first movie or TV show
 
-[Terug naar de startpagina](../README.md)
+[Back to the main page](../README.md)
 
-## Eerst: is alles klaar?
+The app currently uses Dutch labels. This guide includes the labels you will see and their English meaning.
 
-Open **Instellingen → Alles controleren**. PlexPort controleert je downloader en de mappen waarin bestanden moeten komen. Als je automatisch scannen via Plex hebt ingesteld, wordt die verbinding ook getest.
+## First: is everything ready?
 
-De stappen op het **Overzicht** laten zien wat je nog moet instellen. Een toegevoegde bron betekent dat je die kunt gebruiken om te zoeken; het is geen garantie dat de website altijd bereikbaar is.
+Open **Instellingen → Alles controleren (Settings → Check everything)**. PlexPort checks your downloader and the folders where files should go. If you configured automatic Plex scanning, it also tests that connection.
 
-## Zoek en kies een versie
+The checklist on **Overzicht (Overview)** shows what still needs setting up. Adding a source lets you search it; it does not guarantee that its website will always be reachable.
 
-1. Open **Ontdekken**, kies **Films** of **Series** en zoek op een titel.
-2. Kies zo nodig een beeldkwaliteit: **Full HD** is 1080p, **4K** is 2160p en **HD** is 720p. De app leest dit uit de bestandsnaam; het is geen keuring van de video.
-3. Kies een maximale grootte als je ruimte wilt besparen. Bestanden zonder bekende grootte verdwijnen dan uit de selectie.
-4. Gebruik **Mensen die delen** om versies te vinden die op dat moment aangeboden worden. Meer delers kan helpen; het garandeert geen snelheid.
-5. Klik **Kiezen** bij de gewenste versie.
+## Search and choose a version
 
-## Controleer voor je start
+1. Open **Ontdekken (Discover)**, choose **Films (Movies)** or **Series (TV shows)** and search for a title.
+2. Choose a quality if needed: **Full HD** is 1080p, **4K** is 2160p and **HD** is 720p. The app reads this from the release name; it does not inspect video quality.
+3. Set a maximum size to save space. Results without a known size are excluded when a size limit is set.
+4. Use the minimum sharing count to find versions with people currently sharing them. More seeders may help, but do not guarantee speed.
+5. Click **Kiezen (Choose)** beside the version you want.
 
-Controleer de titel en het jaar. Voor één serieaflevering kun je seizoen en aflevering invullen. Voor een seizoenpakket moeten de bestandsnamen afleveringsnummers zoals `S01E01` hebben.
+## Check before starting
 
-Onder **Voor je start** zie je of de downloadmap en bestemming bereikbaar zijn en hoeveel ruimte er vrij is. Bij een bekende bestandsgrootte blokkeert PlexPort een download die niet in de downloadmap past. De controle reserveert geen ruimte; andere downloads kunnen die ondertussen innemen.
+Check the title and year. For a single TV episode, you can enter the season and episode. A season pack needs episode codes such as `S01E01` in its filenames.
 
-Klik **Download starten**. Je ziet de taak onder **Downloads**.
+Under **Voor je start (Before you start)**, you can see whether the download folder and destination are accessible and how much space is free. When the file size is known, PlexPort blocks a download that would not fit in the download folder. The check does not reserve space; other downloads can use it in the meantime.
 
-## Een eigen link of bestand gebruiken
+Click **Download starten (Start download)**. The task appears under **Downloads**.
 
-Klik **Download toevoegen**. Plak een magnetlink of torrentlink, of kies een `.torrent`-bestand. Kies Film of Serie en vul de titel in. Voor zulke handmatige downloads is de grootte vooraf nog onbekend.
+## Use your own link or file
 
-## Volg wat er gebeurt
+Click **Download toevoegen (Add download)**. Paste a magnet or torrent link, or choose a `.torrent` file. Choose **Film (Movie)** or **Serie (TV show)** and enter the title. The size of these manual downloads is not known in advance.
 
-| Melding | Wat betekent het? |
+## Follow what happens
+
+| Label in the app | Meaning |
 |---|---|
-| **Download voorbereiden** | De downloader haalt de bestandsinformatie op. |
-| **Wacht op een vrije plek** | De downloader laat eerst andere taken werken. |
-| **Wacht op delers** | Er komt nu geen data binnen. Dit kan tijdelijk zijn. |
-| **Bestanden controleren** | De downloader controleert de inhoud. PlexPort wacht. |
-| **Bestanden verplaatsen** | De downloader verplaatst de bestanden. PlexPort wacht. |
-| **Importeren** | De voltooide video's worden in je mediamap geplaatst. |
-| **Geïmporteerd** | De bestanden staan in de ingestelde mediamap. |
-| **Aandacht nodig** | Lees de melding, herstel het probleem en kies Opnieuw proberen. |
+| **Download voorbereiden** | Preparing: the downloader is fetching file information. |
+| **Wacht op een vrije plek** | Waiting for a slot: other tasks are running first. |
+| **Wacht op delers** | Waiting for seeders: no data is arriving. This may be temporary. |
+| **Bestanden controleren** | Checking files: PlexPort waits for the downloader to finish checking. |
+| **Bestanden verplaatsen** | Moving files: PlexPort waits for the downloader to finish moving them. |
+| **Importeren** | Importing: completed videos are being placed in your media folder. |
+| **Geïmporteerd** | Imported: files are in your configured media folder. |
+| **Aandacht nodig** | Needs attention: read the message, fix the problem and choose **Opnieuw proberen (Retry)**. |
 
-Onder **Downloads** kun je op naam zoeken of alleen lopende taken, problemen of geplaatste media bekijken.
+Under **Downloads**, you can search by name or filter for active tasks, problems or imported media.
 
-## Bekijk in Plex
+## Watch in Plex
 
-De films en series verschijnen in Plex zodra Plex de mediamappen heeft gescand en de titel heeft herkend. Met een ingestelde Plex-koppeling vraagt PlexPort die scan aan. Je kunt in **Bibliotheek** ook **Plex laten scannen** kiezen, of zelf de bibliotheek in Plex vernieuwen.
+Movies and shows appear in Plex once it has scanned the media folders and identified the title. With a configured Plex connection, PlexPort requests that scan. Under **Bibliotheek (Library)**, you can also choose **Plex laten scannen (Ask Plex to scan)**, or refresh the library directly in Plex.
 
-De oorspronkelijke download blijft staan om het bestand te blijven delen. PlexPort verwijdert je downloads niet automatisch.
+Original downloads stay in place for sharing. PlexPort does not automatically delete them.

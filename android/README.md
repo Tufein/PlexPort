@@ -1,46 +1,50 @@
-# PlexPort voor Android
+# PlexPort for Android
 
-Deze Android-app opent jouw bestaande PlexPort op de NAS. Bronnen, qBittorrent, downloadstatus en Plex-instellingen komen van dezelfde server als de website. De telefoon hoeft geen torrent-downloader te draaien.
+This Android app opens your existing PlexPort server on a NAS. Sources, qBittorrent, download statuses and Plex settings come from the same server as the website. Your phone does not run a torrent downloader.
 
-## Installeren en gebruiken
+For a simple walkthrough, see [Install on Android](../docs/START-ANDROID.md). The current native and website interfaces use Dutch labels.
 
-Je kunt de APK rechtstreeks op je telefoon downloaden via **PlexPort → Instellingen → Android-app downloaden** op `http://192.168.1.100:8765/#settings`.
+## Install and use
 
-1. Zet `dist/PlexPort-1.1.0.apk` op je Android-telefoon en open het bestand. Sta, als Android daarom vraagt, installatie vanuit die bestandsapp of browser toe.
-2. Verbind met hetzelfde thuisnetwerk als je NAS, of een VPN die toegang geeft tot dat netwerk.
-3. Open **PlexPort** en vul je eigen NAS-adres in, bijvoorbeeld `http://192.168.1.100:8765/`. De eerste suggestie is `http://truenas.local:8765/`. Je kunt het adres later veranderen via **Menu → NAS-adres wijzigen**.
-4. Meld je aan met `admin` en je bestaande **PlexPort-wachtwoord**. Gebruik hier je PlexPort-aanmelding, niet je qBittorrent- of TrueNAS-wachtwoord.
+You can download the APK on your phone through **PlexPort → Instellingen → Android-app downloaden (Settings → Download Android app)**.
 
-De app slaat alleen het NAS-adres op. Je wachtwoord blijft uitsluitend in het geheugen tijdens de appsessie en is opnieuw nodig na het sluiten van de app. **Menu → Afmelden** beëindigt de aanmelding. Een nieuwe sessie controleert je aanmelding opnieuw op de server voordat de website wordt geladen. Androids terugknop gaat terug binnen de website; de app sluit wanneer er geen vorige pagina is. Roteren behoudt je huidige pagina en formulier.
+1. Put `dist/PlexPort-1.1.0.apk` on your Android phone and open it. If Android asks, allow installation from that browser or file app.
+2. Connect to the same home network as your NAS, or a VPN that can reach it.
+3. Open **PlexPort** and enter your own server address. The public build suggests `http://truenas.local:8765/`; use your NAS IP if your network does not resolve that name. Change it later through **Menu → NAS-adres wijzigen (Change NAS address)**.
+4. Sign in as `admin` with your existing **PlexPort password**, not your qBittorrent or TrueNAS password.
 
-De app volgt de lichte of donkere systeemstand. In PlexPort kun je daarnaast via de themakeuze een eigen voorkeur kiezen. Die websitevoorkeur blijft per apparaat bewaard. `.torrent`-bestanden kunnen via de gewone Android-bestandskiezer worden geselecteerd; hiervoor is geen algemene opslagpermissie nodig.
+The app saves only the NAS address. Your password stays in memory for the app session and is needed again after closing the app. **Menu → Afmelden (Sign out)** ends the session. A new session checks your credentials on the server before loading the website. Android's back button navigates within the website; the app closes when there is no previous page. Rotation preserves the current page and form.
 
-## Bereik en bescherming
+The app follows the system light or dark theme. PlexPort also lets you choose a website theme, saved per device. `.torrent` files can be selected with Android's normal file picker; no broad storage permission is required.
 
-- Ondersteunt Android 8.0 en nieuwer: minimum API 26, compile en target API 36. Het enige manifestrecht is `INTERNET`.
-- Lokale HTTP is bewust toegestaan voor de huidige NAS-installatie. HTTP versleutelt de aanmelding niet; gebruik dit adres binnen je vertrouwde thuisnetwerk of VPN. HTTPS met een geldig certificaat wordt ook ondersteund.
-- Alleen het ingestelde HTTP(S)-adres, met hetzelfde protocol, hostnaam en poort, kan binnen de app worden geladen. Externe websites, andere poorten, `file:`, `content:` en intentlinks worden geblokkeerd.
-- Lokale WebView-bestandstoegang, contenttoegang, JavaScript-native bridges, third-party cookies, geolocatie, extra vensters en ongevraagde apparaatpermissies zijn uitgeschakeld. JavaScript is nodig om PlexPort te bedienen.
-- HTTPS-certificaatfouten worden geweigerd. De app biedt geen knop om die te omzeilen.
-- De native aanmeldcontrole verstuurt alleen een leesverzoek naar `/`, heeft verbindings- en leestime-outs en volgt geen doorverwijzingen. De bestaande PlexPort-server beperkt scripts, afbeeldingen en netwerkverzoeken met zijn Content Security Policy. Androids resourcecontrole ziet bij doorverwijzingen alleen het eerste resourceadres; gebruik deze client daarom voor jouw PlexPort-server.
-- Downloads blijven op je NAS/Mac volgens de bestaande PlexPort-instellingen; er draait geen downloadproces of achtergrondservice op Android. De NAS moet bereikbaar zijn.
+Install this APK over the previous version to keep the saved server address. It has the same signing certificate and a higher version code.
 
-## Opnieuw bouwen
+## Scope and protections
 
-Gebruik JDK 17 of nieuwer, Android SDK platform 36 en build-tools 35.0.0 of 36.0.0. Stel `JAVA_HOME` en `ANDROID_HOME` in voor je eigen installatie. Gradle 8.13 en Android Gradle Plugin 8.13.2 zijn vastgezet; de Gradle-download heeft een SHA256-controle.
+- Supports Android 8.0 and newer: minimum API 26, compile and target API 36. The only manifest permission is `INTERNET`.
+- Local HTTP is allowed for NAS installations. HTTP does not encrypt login details; use it within your trusted home network or VPN. HTTPS with a valid certificate is also supported.
+- Only the configured HTTP(S) address, with the same protocol, hostname and port, can load inside the app. External websites, other ports, `file:`, `content:` and intent links are blocked.
+- Local WebView file and content access, JavaScript-to-native bridges, third-party cookies, geolocation, extra windows and unsolicited device permissions are disabled. JavaScript is required for PlexPort controls.
+- HTTPS certificate errors are rejected. The app does not provide a bypass.
+- The native login check sends a read request to `/`, uses connection and read timeouts, and does not follow redirects. The PlexPort server restricts scripts, images and network requests through its Content Security Policy. Android's resource check sees only the initial resource URL during redirects; use this client for your own PlexPort server.
+- Downloads stay on your NAS or Mac according to existing PlexPort settings. Android does not run a download process or background service. The NAS must remain reachable.
 
-Vanuit deze map:
+## Build again
+
+Use JDK 17 or newer, Android SDK platform 36, and build-tools 35.0.0 or 36.0.0. Set `JAVA_HOME` and `ANDROID_HOME` for your installation. Gradle 8.13 and Android Gradle Plugin 8.13.2 are pinned; the Gradle download has a SHA256 check.
+
+From this folder:
 
 ```sh
 ./build-apk.sh
 ```
 
-Dit voert de URL-beveiligingschecks en release-lint uit en bouwt een ondertekende release-APK naar `dist/PlexPort-1.1.0.apk`. Het bijbehorende `.apk.sha256`-bestand wordt bij elke bouw vernieuwd. Kopieer een vernieuwde APK ook naar `plexport/static/plexport.apk` in de NAS-codemap om de website-download bij te werken. Voor een losse ontwikkelbuild kun je `./gradlew assembleDebug` gebruiken.
+This runs URL security unit checks and release lint, then builds a signed release APK in `dist/PlexPort-1.1.0.apk`. The filename follows the version in `app/build.gradle`. Its `.apk.sha256` file is refreshed on each build. Copy the new APK to `plexport/static/plexport.apk` in your NAS code folder to update the website download. For a development build, use `./gradlew assembleDebug`.
 
-De eerste release-build maakt een eigen ondertekeningssleutel in **`android/.signing/plexport-release.jks`**, met bijbehorende privé-instellingen in **`android/.signing/signing.properties`**. Latere builds gebruiken dezelfde sleutel; ze vervangen of regenereren hem niet. Bewaar de hele `.signing`-map veilig als back-up: Android accepteert updates alleen met dezelfde ondertekening. De map heeft beperkte bestandsrechten en wordt uitgesloten door `.gitignore`. Deel of publiceer deze map niet. Wanneer één van beide bestanden ontbreekt, stopt de bouw om onbedoeld een andere sleutel te voorkomen.
+Your first release build creates a signing key in **`android/.signing/plexport-release.jks`**, with private settings in **`android/.signing/signing.properties`**. Later builds reuse it; they do not replace or regenerate it. Back up the entire `.signing` folder securely: Android accepts updates only with the same signing key. The folder has restricted permissions and is excluded by `.gitignore`. Never share or publish it. If only one of the two files exists, the build stops to avoid creating a different key accidentally.
 
-De meegeleverde APK is een release-build zonder Android-debugging. De handtekening is lokaal voor deze persoonlijke app; de app is niet gepubliceerd in Google Play. Installeer toekomstige versies over de bestaande app met dezelfde sleutel en een hoger `versionCode`.
+The supplied APK is a release build with Android debugging disabled. It is signed for this project and is not published on Google Play. Future updates need the same signing key and a higher `versionCode`. The project's private key is not included: your own builds get their own signature and cannot replace the project's published APK directly.
 
-## Officiële Android-bronnen
+## Official Android sources
 
-De WebView volgt Androids [bestandstoegangsaanbevelingen](https://developer.android.com/privacy-and-security/risks/webview-unsafe-file-inclusion), [HTTP-authenticatie](https://developer.android.com/reference/android/webkit/HttpAuthHandler), [afhandeling van TLS-fouten](https://developer.android.com/reference/android/webkit/WebViewClient#onReceivedSslError(android.webkit.WebView,%20android.webkit.SslErrorHandler,%20android.net.http.SslError)) en [website-donkerstand](https://developer.android.com/develop/ui/views/layout/webapps/dark-theme). De bouwversies zijn gebaseerd op de [AGP 8.13-compatibiliteitstabel](https://developer.android.com/build/releases/agp-8-13-0-release-notes) en de [Android 16 SDK](https://developer.android.com/about/versions/16/setup-sdk). Lees ook Androids uitleg over [cleartext traffic](https://developer.android.com/privacy-and-security/security-config#CleartextTrafficPermitted) en [APK-ondertekening](https://developer.android.com/tools/apksigner).
+The WebView follows Android guidance for [file access](https://developer.android.com/privacy-and-security/risks/webview-unsafe-file-inclusion), [HTTP authentication](https://developer.android.com/reference/android/webkit/HttpAuthHandler), [TLS errors](https://developer.android.com/reference/android/webkit/WebViewClient#onReceivedSslError(android.webkit.WebView,%20android.webkit.SslErrorHandler,%20android.net.http.SslError)) and [website dark mode](https://developer.android.com/develop/ui/views/layout/webapps/dark-theme). Build versions follow the [AGP 8.13 compatibility table](https://developer.android.com/build/releases/agp-8-13-0-release-notes) and [Android 16 SDK setup](https://developer.android.com/about/versions/16/setup-sdk). Also see [cleartext traffic](https://developer.android.com/privacy-and-security/security-config#CleartextTrafficPermitted) and [APK signing](https://developer.android.com/tools/apksigner).

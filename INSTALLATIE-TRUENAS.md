@@ -1,76 +1,76 @@
-# PlexPort op TrueNAS
+# PlexPort on TrueNAS
 
-Installeer PlexPort als custom app via **Apps → Discover Apps → Install via YAML**. qBittorrent en Plex draaien als aparte apps op dezelfde NAS. `compose.yaml` en `compose.truenas.yaml` zijn identieke voorbeelden; vervang de adressen, datasetpaden en gebruiker door die van jouw NAS.
+Install PlexPort as a custom app through **Apps → Discover Apps → Install via YAML**. qBittorrent and Plex run as separate apps on the same NAS. `compose.yaml` and `compose.truenas.yaml` are identical examples; replace the addresses, dataset paths and user with those for your NAS.
 
-## Mappen en gebruiker
+## Folders and app user
 
-Het voorbeeld gebruikt `192.168.1.100`, pool `tank` en UID/GID `3000:3000`. Deze waarden zijn voorbeelden. Maak de app-, data- en downloadmappen vooraf aan en gebruik de werkelijke schrijfwijze van je film- en seriemappen.
+The example uses `192.168.1.100`, pool `tank` and UID/GID `3000:3000`. These are example values. Create the app, data and download folders beforehand, and use the exact spelling of your existing movie and TV folders.
 
-| Gebruik | Voorbeeld op TrueNAS | PlexPort-container | qBittorrent-container |
+| Purpose | Example TrueNAS path | PlexPort container | qBittorrent container |
 |---|---|---|---|
-| Appcode | `/mnt/tank/media/Movies/.plexport-app/code` | `/app` | — |
-| Instellingen en taken | `/mnt/tank/media/Movies/.plexport-app/data` | `/data` | — |
+| App code | `/mnt/tank/media/Movies/.plexport-app/code` | `/app` | — |
+| Settings and tasks | `/mnt/tank/media/Movies/.plexport-app/data` | `/data` | — |
 | Downloads | `/mnt/tank/media/Movies/.plexport-downloads` | `/downloads` | `/downloads` |
-| Films | `/mnt/tank/media/Movies` | `/media/Movies` | — |
-| Series | `/mnt/tank/media/Series` | `/media/TV Shows` | — |
+| Movies | `/mnt/tank/media/Movies` | `/media/Movies` | — |
+| TV shows | `/mnt/tank/media/Series` | `/media/TV Shows` | — |
 
-Beide downloadkoppelingen moeten naar **dezelfde fysieke map** verwijzen. Gebruik in de qBittorrent-app een hostpad voor de downloads. De gebruikers van beide apps moeten daar kunnen lezen en schrijven. Plex moet de film- en seriemappen kunnen lezen. Behoud bestaande dataset-ACL's; pas toegangsrechten aan voor de gekozen appgebruikers.
+Both download mounts must point to **the same physical folder**. Use a host path for downloads in the qBittorrent app. Both app users need read and write access there. Plex needs read access to the movie and TV folders. Preserve existing dataset ACLs and adjust access for the chosen app users.
 
-Plaats de inhoud van deze repository in de codemap, met de submap `plexport` rechtstreeks onder `code`. Als de downloads en appbestanden binnen je filmmap staan, voeg dan aan `.plexignore` in die filmmap toe:
+Place this repository's contents in the code folder, with `plexport` directly inside `code`. If downloads and app files sit inside the movie folder, add these entries to `.plexignore` in that movie folder:
 
 ```text
 .plexport-downloads/*
 .plexport-app/*
 ```
 
-## PlexPort installeren
+## Install PlexPort
 
-1. Pas alle voorbeeldpaden en het NAS-adres in `compose.yaml` aan. Controleer ook `user: "3000:3000"` tegen de gebruiker die toegang tot je datasets heeft.
-2. Vul een eigen `PLEXPORT_PASSWORD` in. Een netwerkserver zonder appwachtwoord start niet. Bewaar een bestaand wachtwoord bij een update.
-3. Installeer via de Apps-webinterface met naam `plexport`, sla de YAML op en wacht op **Running**.
-4. Open `http://JE-NAS-ADRES:8765` en meld aan als `admin` met je PlexPort-wachtwoord.
+1. Adjust every example path and NAS address in `compose.yaml`. Check that `user: "3000:3000"` matches a user with access to your datasets.
+2. Set your own `PLEXPORT_PASSWORD`. A network server will not start without an app password. Preserve an existing password during updates.
+3. Install through the Apps web interface with the name `plexport`, save the YAML and wait for **Running**.
+4. Open `http://YOUR-NAS-ADDRESS:8765` and sign in as `admin` with your PlexPort password.
 
-De YAML gebruikt de officiële Python-container en vereist geen lokale Docker-build. `create_host_path: false` laat een verkeerde mapkoppeling mislukken, zodat er geen onverwachte lege map wordt gemaakt. Bewaar de `data`-map bij updates; deze bevat instellingen en taken. Laat één PlexPort-instantie dezelfde taken verwerken.
+The YAML uses the official Python container and does not require a local Docker build. `create_host_path: false` makes an incorrect folder mount fail instead of creating an unexpected empty folder. Keep the `data` folder during updates: it contains settings and tasks. Run only one PlexPort instance against the same tasks.
 
-## qBittorrent verbinden
+## Connect qBittorrent
 
-Schakel de Web UI van de qBittorrent-app in en stel de standaarddownloadmap in op `/downloads`. Gebruik diezelfde containerlocatie in PlexPort. Automatisch torrentmapbeheer staat voor PlexPort-taken uit; gebruik bij voorkeur geen aparte tijdelijke downloadmap.
+Enable the qBittorrent app's Web UI and set its default download folder to `/downloads`. Use the same container path in PlexPort. Automatic torrent management is disabled for PlexPort tasks; preferably avoid a separate temporary download folder.
 
-Open **PlexPort → Instellingen**:
+Open **PlexPort → Instellingen (Settings)**:
 
-| Instelling | Waarde |
+| Setting | Value |
 |---|---|
 | Downloader | qBittorrent |
-| Serveradres | `http://JE-NAS-ADRES:30024` of jouw Web UI-poort |
-| Gebruikersnaam en wachtwoord | Je qBittorrent-Web UI-aanmelding |
-| Downloadmap gezien door de downloader | `/downloads` |
-| Dezelfde downloadmap gezien door PlexPort | `/downloads` |
-| Filmmap | `/media/Movies` |
-| Seriemap | `/media/TV Shows` |
+| Server address | `http://YOUR-NAS-ADDRESS:30024` or your Web UI port |
+| Username and password | Your qBittorrent Web UI login |
+| Download folder as seen by the downloader | `/downloads` |
+| Same folder as seen by PlexPort | `/downloads` |
+| Movie folder | `/media/Movies` |
+| TV folder | `/media/TV Shows` |
 
-Klik **Opslaan & verbinding testen** en **Opslaan & mappen controleren**. Bij een bestaande database vervangen gewijzigde YAML-waarden de eerder opgeslagen instellingen niet automatisch; pas ook het instellingenformulier aan. Als je qBittorrent al bewust zonder aanmelding voor het appnetwerk gebruikt, laat de downloader-gebruikersnaam leeg. Het voorbeeld schakelt authenticatie niet uit.
+Click **Opslaan & verbinding testen (Save & test connection)** and **Opslaan & mappen controleren (Save & check folders)**. With an existing database, changed YAML values do not automatically replace saved settings; update the settings form too. If your qBittorrent already intentionally permits access without login on the app network, leave the downloader username blank. The example does not disable authentication.
 
-Nieuwe taken die je via PlexPort toevoegt krijgen een eigen submap in `/downloads`. Voltooide video's en ondertitels worden naar je film- of seriemap geïmporteerd. De oorspronkelijke bestanden blijven beschikbaar voor seeding. Hardlinks worden gebruikt als dat kan; anders maakt de import een kopie en gebruikt hij extra schijfruimte. Rechtstreeks aan qBittorrent toegevoegde torrents krijgen geen automatische PlexPort-import.
+New tasks added through PlexPort get their own subfolder in `/downloads`. Completed videos and subtitles are imported to your movie or TV folder. Originals remain available for seeding. Imports use hardlinks where possible; otherwise a copy uses extra disk space. Torrents added directly to qBittorrent do not get automatic PlexPort imports.
 
-## Plex en bronnen
+## Plex and sources
 
-Vul je Plex-serveradres en Plex-token in, test Plex en sla de bijbehorende film- en seriebibliotheek-ID's op. Plex moet dezelfde fysieke mediamappen lezen; zijn containerpaden mogen anders heten. Zonder API-token worden bestanden wel geïmporteerd; gebruik dan automatisch scannen in Plex of scan handmatig.
+Enter your Plex server address and token, test Plex, then save the movie and TV library IDs. Plex must read the same physical media folders, although its container paths may have different names. Files are imported even without an API token; use automatic or manual Plex scanning in that case.
 
-Bij **Jouw bronnen** kun je WatchSoMuch rechtstreeks toevoegen of een Torznab-bron via Prowlarr of Jackett instellen. Controleer de titel, het jaar en afleveringsnummers voordat je een download start.
+Under **Jouw bronnen (Your sources)**, add WatchSoMuch directly or configure a Torznab source through Prowlarr or Jackett. Check the title, year and episode numbers before starting a download.
 
-## Android en uiterlijk
+## Android and appearance
 
-Download de APK via **Instellingen → Android-app downloaden**, of gebruik `android/dist/PlexPort-1.0.0.apk`. Android 8 of nieuwer wordt ondersteund. Vul je eigen PlexPort-serveradres in; bronnen en taken komen van diezelfde server. De website heeft een keuze tussen Systeem, Licht en Donker. Zie [Android-instructies](android/README.md).
+Download the APK through **Instellingen → Android-app downloaden (Settings → Download Android app)**, or use `android/dist/PlexPort-1.1.0.apk`. Android 8 or newer is supported. Enter your own PlexPort server address; sources and tasks come from that server. The website offers System, Light and Dark appearance options, currently labeled **Systeem**, **Licht** and **Donker**. See the [Android instructions](android/README.md).
 
-## Hulpmiddelen en fouten
+## Tools and troubleshooting
 
-- `tools/diagnose_qbittorrent.py` leest geselecteerde appinstellingen, koppelingen, rechten en gefilterde logs zonder instellingen te wijzigen.
-- `tools/repair_qbittorrent_owner.py` herstelt na een UID-wijziging uitsluitend de configuratie van de gecontroleerde qBittorrent-app, met een backup. Pas het verwachte downloadpad aan jouw installatie aan voordat je dit gebruikt.
-- `tools/connect_nas_qbittorrent.py` koppelt een bestaande PlexPort-installatie, bewaart de Compose-configuratie en database en controleert verbinding en gedeelde schrijftoegang. Pas de constanten `BASE`, `DOWNLOADS` en `URL` aan jouw installatie aan.
-- `tools/truenas_icon.py` biedt een omkeerbare, versiegebonden iconenaanpassing voor TrueNAS **25.10.7**. Dit gebruikt appmetadata buiten de ondersteunde iconen-API. Voer het alleen op deze versie uit; de `--restore`-optie herstelt het oorspronkelijke icoon.
+- `tools/diagnose_qbittorrent.py` reads selected app settings, mounts, permissions and filtered logs without changing settings.
+- `tools/repair_qbittorrent_owner.py` repairs only the checked qBittorrent app's configuration after a UID change, with a backup. Adjust the expected download path for your installation before using it.
+- `tools/connect_nas_qbittorrent.py` connects an existing PlexPort installation, backs up the Compose configuration and database, and checks the connection and shared write access. Adjust `BASE`, `DOWNLOADS` and `URL` for your setup.
+- `tools/truenas_icon.py` provides a reversible icon adjustment specifically for TrueNAS **25.10.7**. It uses app metadata outside the supported icon API. Use it only on this version; `--restore` restores the original icon.
 
-Deze NAS-hulpmiddelen draaien in de **TrueNAS-hostshell** als beheerder. Hun backups bevatten lokale instellingen en horen niet in GitHub. De diagnose is alleen-lezen; andere hulpmiddelen wijzigen uitsluitend de beschreven appconfiguratie.
+These NAS tools run in the **TrueNAS host shell** as an administrator. Their backups contain local settings and must not be uploaded to GitHub. Diagnostics are read-only; the other tools change only the described app configuration.
 
-Bij `[EFAULT] Failed up action` geeft `/var/log/app_lifecycle.log` de werkelijke oorzaak. Een ontbrekend bindpad vraagt om het correcte bestaande pad; maak geen lege vervangende mediamap. Een configuratiefout na een UID-wijziging kan door oude bestandsrechten ontstaan. Bestaande torrents worden niet automatisch tussen downloaders verplaatst: controleer de oorspronkelijke client en bestanden voordat je een taak hervat.
+For `[EFAULT] Failed up action`, `/var/log/app_lifecycle.log` shows the actual cause. A missing bind path needs the correct existing path, not an empty replacement media folder. Configuration errors after a UID change can come from old file ownership. Existing torrents are not automatically moved between downloaders: check the original client and files before resuming a task.
 
-Bronnen: [TrueNAS custom apps](https://apps.truenas.com/managing-apps/installing-custom-apps/), [qBittorrent Web UI API](https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)), [Plex-mapuitsluitingen](https://support.plex.tv/articles/201381883-special-keyword-file-folder-exclusion/).
+Sources: [TrueNAS custom apps](https://apps.truenas.com/managing-apps/installing-custom-apps/), [qBittorrent Web UI API](https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)), [Plex folder exclusions](https://support.plex.tv/articles/201381883-special-keyword-file-folder-exclusion/).

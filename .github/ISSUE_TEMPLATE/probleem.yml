@@ -1,36 +1,36 @@
-name: Er werkt iets niet
-description: Vertel in gewone woorden wat je ziet. Technische kennis is niet nodig.
-title: "Probleem: "
+name: Report a problem
+description: Tell us what you see in plain language. No technical knowledge needed.
+title: "Problem: "
 body:
   - type: markdown
     attributes:
-      value: "Deze melding is openbaar. Deel geen wachtwoorden, tokens of volledige instellingenbestanden."
+      value: "This report is public. Do not share passwords, tokens or complete settings files."
   - type: dropdown
     id: apparaat
     attributes:
-      label: Waar gebruik je PlexPort?
+      label: Where do you use PlexPort?
       options:
         - TrueNAS
-        - Andere NAS
+        - Another NAS
         - Mac
-        - Andere computer
+        - Another computer
         - Android
     validations:
       required: true
   - type: textarea
     id: gebeurd
     attributes:
-      label: Wat wilde je doen en wat gebeurde er?
-      placeholder: "Bijvoorbeeld: ik klikte op Download starten, maar kreeg een melding over de filmmap."
+      label: What were you trying to do, and what happened?
+      placeholder: "For example: I clicked Start download, but saw a message about the movie folder."
     validations:
       required: true
   - type: textarea
     id: melding
     attributes:
-      label: Welke melding zie je?
-      description: Kopieer alleen de relevante melding en haal persoonlijke gegevens weg.
+      label: What message do you see?
+      description: Copy only the relevant message and remove private information.
   - type: textarea
     id: controle
     attributes:
-      label: Wat geeft Alles controleren aan?
-      description: Je vindt deze knop bij Instellingen.
+      label: What does Check everything report?
+      description: In the current Dutch interface, open Instellingen (Settings) and click Alles controleren (Check everything).

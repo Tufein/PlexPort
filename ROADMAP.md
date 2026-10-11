@@ -1,27 +1,30 @@
-# Wat komt er hierna?
+# What's next?
 
-[Terug naar de startpagina](README.md) · [Wat is al toegevoegd?](CHANGELOG.md)
+[Back to the main page](README.md) · [What's already available?](CHANGELOG.md)
 
-## Nu beschikbaar
+## Available now
 
-Een eenvoudige startgids, controle van je verbindingen en mappen, filters voor downloadversies, zoeken in je downloads en duidelijke uitleg wanneer een taak wacht. Ook zijn donkerstand, Android, qBittorrent, Transmission en de import naar je mediamappen beschikbaar.
+Simple setup guides, connection and folder checks, download version filters, download search, and clearer explanations when a task is waiting. Dark mode, Android, qBittorrent, Transmission and media-folder imports are also available.
 
-## Onderzochte volgende verbeteringen
+The GitHub documentation is now in English. The app interface still uses Dutch labels.
 
-Deze ideeën zijn onderzocht, maar nog niet ingebouwd en hebben geen beloofde opleverdatum.
+## Next improvements researched
 
-| Idee | Wat heb je eraan? | Wat moet eerst goed geregeld zijn? |
+These ideas have been researched but are not built yet. No delivery dates are promised.
+
+| Idea | How it helps | What needs to work first |
 |---|---|---|
-| **Een bestaande qBittorrent-download toevoegen** | Ook bestanden die je buiten PlexPort downloadde netjes in Plex plaatsen. | Het juiste bestandspad controleren, voorkomen dat dezelfde video dubbel wordt geplaatst en jou de titel laten bevestigen. |
-| **Een vaste voorkeurskwaliteit** | Je hoeft niet telkens Full HD, 4K of een maximumgrootte te kiezen. | Begrijpelijk laten zien waarom een versie wel of niet past, met een keuze wanneer de kwaliteit onbekend is. |
-| **Afleveringen kiezen uit een seizoen** | Alleen downloaden wat je nog nodig hebt. | Bestandsinformatie afwachten, geselecteerde bestanden bijhouden en de juiste afleveringsnummers controleren. |
-| **Zien of extra opslag nodig is** | Vooraf duidelijk weten wanneer een video ruimte bespaart of als kopie wordt opgeslagen. | Werkelijke ondersteuning van hardlinks testen; dezelfde schijf of mapnaam alleen is geen bewijs. |
-| **Een begeleide TrueNAS-installatie** | Minder mapinstellingen en minder kans op een verkeerde koppeling. | Bestaande datasets, rechten en media behouden; geen lege vervangende mappen aanmaken. |
+| **Import an existing qBittorrent download** | Organize files downloaded outside PlexPort in Plex too. | Verify file paths, avoid duplicate imports and let you confirm the title. |
+| **Save a preferred quality** | Avoid choosing Full HD, 4K or a maximum size every time. | Explain why a version matches and allow a choice when quality is unknown. |
+| **Choose episodes from a season** | Download only what you still need. | Wait for file information, track selected files and verify episode numbers. |
+| **Show when extra storage is needed** | Understand whether an import saves space or requires a copy. | Test actual hardlink support; the same disk or folder name is not proof. |
+| **Guided TrueNAS setup** | Fewer folder settings and fewer incorrect mounts. | Preserve existing datasets, permissions and media without creating empty replacement folders. |
+| **English app interface** | Use PlexPort without learning Dutch button labels. | Translate controls, status messages and errors consistently, while preserving settings and download behavior. |
 
-## Waar het onderzoek op is gebaseerd
+## Research sources
 
-De [officiële qBittorrent-uitleg](https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-%28qBittorrent-5.0%29) beschrijft afzonderlijke downloadtoestanden, bestandskeuzes en de bediening van bestaande torrents. Dat maakt duidelijkere voortgang en gecontroleerde bestandskeuzes mogelijk.
+The [official qBittorrent API documentation](https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-%28qBittorrent-5.0%29) describes separate download states, file selection and control of existing torrents. These support clearer progress and controlled file choices.
 
-De [Sonarr-startgids](https://wiki.servarr.com/sonarr/quick-start-guide) werkt met voorkeurskwaliteit en gebruikt hardlinks waar de opslag dat ondersteunt. Dit geeft bruikbare ideeën voor PlexPort, met extra aandacht voor begrijpelijke keuzes en jouw bestaande mediamappen.
+The [Sonarr quick-start guide](https://wiki.servarr.com/sonarr/quick-start-guide) describes quality preferences and hardlinks where storage supports them. These offer useful ideas for PlexPort, with attention to clear choices and existing media folders.
 
-[Stel zelf een verbetering voor](https://github.com/Tufein/PlexPort/issues/new?template=idee.yml).
+[Suggest an improvement](https://github.com/Tufein/PlexPort/issues/new?template=idee.yml).

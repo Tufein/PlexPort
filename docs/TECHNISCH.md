@@ -1,122 +1,117 @@
-# Technische uitleg voor PlexPort
+# PlexPort technical guide
 
-[Terug naar de eenvoudige startpagina](../README.md) · [Dagelijks gebruik](GEBRUIKEN.md)
+[Back to the simple start page](../README.md) · [Daily use](GEBRUIKEN.md)
 
-Een lokale, Nederlandstalige app die je bronnen doorzoekt, torrents naar Transmission of qBittorrent stuurt en voltooide media automatisch in je Plex-mediamappen importeert.
+PlexPort is a local app that searches your sources, sends torrents to Transmission or qBittorrent, and imports completed media into your Plex folders. The current interface uses Dutch labels; repository documentation is in English.
 
-Bovenaan kies je bij **Weergave** tussen Systeem, Licht en Donker. Je keuze blijft per browser bewaard. Voor Android staat een ondertekende APK klaar in [android/dist/PlexPort-1.1.0.apk](../android/dist/PlexPort-1.1.0.apk); je kunt hem ook downloaden via **Instellingen → Android-app downloaden**. De Android-app gebruikt dezelfde NAS, bronnen en downloads. Zie [Android installeren](../android/README.md) en de [roadmap voor betere downloads](../ROADMAP.md).
+At the top, **Weergave (Appearance)** offers **Systeem (System)**, **Licht (Light)** and **Donker (Dark)**. Your choice is saved per browser. A signed [Android APK](../android/dist/PlexPort-1.1.0.apk) is available through **Instellingen → Android-app downloaden (Settings → Download Android app)** too. It uses the same NAS, sources and downloads. See the [Android guide](../android/README.md) and [download roadmap](../ROADMAP.md).
 
-**TrueNAS 25.10 Goldeye:** volg [INSTALLATIE-TRUENAS.md](../INSTALLATIE-TRUENAS.md). `compose.yaml` en `compose.truenas.yaml` zijn voorbeelden voor de Apps-webinterface. Pas het NAS-adres, de datasetpaden en UID/GID aan en vul een eigen PlexPort-wachtwoord in. PlexPort en de qBittorrent-app moeten dezelfde fysieke downloadmap als `/downloads` zien.
+**TrueNAS 25.10 Goldeye:** follow [INSTALLATIE-TRUENAS.md](../INSTALLATIE-TRUENAS.md). `compose.yaml` and `compose.truenas.yaml` are examples for the Apps web interface. Adjust the NAS address, dataset paths and UID/GID, then set your own PlexPort password. PlexPort and qBittorrent must see the same physical download folder as `/downloads`.
 
-**Andere NAS of lokale Docker-installatie:** volg [INSTALLATIE-NAS.md](../INSTALLATIE-NAS.md) met `compose.build.yaml` voor een bestaande qBittorrent. Gebruik `compose.transmission.yaml` als je liever een nieuwe torrent-downloader meelevert. Alleen deze twee varianten gebruiken `.env`.
+**Other NAS or local Docker installation:** follow [INSTALLATIE-NAS.md](../INSTALLATIE-NAS.md) with `compose.build.yaml` for an existing qBittorrent. Use `compose.transmission.yaml` to include a new torrent downloader. Only those two variants use `.env`.
 
-## Starten op deze Mac
+## Start on a Mac
 
-Dubbelklik op **Start PlexPort.command**, of start vanuit deze map:
+Double-click **Start PlexPort.command**, or run from the project folder:
 
 ```sh
 python3 -m plexport --open
 ```
 
-Python 3.11 of nieuwer is voldoende; de app heeft geen aanvullende Python-pakketten nodig. De app opent op **http://127.0.0.1:8765**. Houd het terminalvenster open om downloads te verwerken. Sluiten of Ctrl+C stopt PlexPort; de torrentclient blijft zelfstandig werken. Downloads en instellingen worden na opnieuw starten hervat.
+Python 3.11 or newer is enough; no additional Python packages are required. The app opens at **http://127.0.0.1:8765**. Keep the terminal window open to process downloads. Closing it or pressing Ctrl+C stops PlexPort; the torrent client continues independently. Downloads and settings resume after restarting.
 
-Bij deze startmethode gebruik je een **apart geïnstalleerde Transmission of qBittorrent**. De torrent-engine draait niet in het Python-proces.
+This launch method uses a **separately installed Transmission or qBittorrent**. The torrent engine does not run in the Python process.
 
-## Inclusief torrent-downloader met Docker
+## Include a torrent downloader with Docker
 
-De alternatieve Docker Compose-opstelling start PlexPort en Transmission samen. Docker moet daarvoor geïnstalleerd en gestart zijn. Gebruik bij een lokale Docker-build `compose.build.yaml` voor een bestaande qBittorrent; starten gebeurt dan met `docker compose -f compose.build.yaml up -d --build`.
+The alternative Docker Compose setup starts PlexPort and Transmission together. Docker must be installed and running. For a local Docker build using an existing qBittorrent, use `compose.build.yaml` and start with `docker compose -f compose.build.yaml up -d --build`.
 
-1. Kopieer `.env.example` naar `.env`.
-2. Kies je eigen app- en Transmission-wachtwoorden in `.env`.
-3. Stel `MEDIA_PATH` in op je bestaande Plex-mediamap en `DOWNLOADS_PATH` op een downloadmap. Beide moeten bestaan en schrijfbaar zijn. Op Linux/NAS stel je ook `PUID` en `PGID` in op de eigenaar van de mappen.
+1. Copy `.env.example` to `.env`.
+2. Choose your own app and Transmission passwords in `.env`.
+3. Set `MEDIA_PATH` to your existing Plex media folder and `DOWNLOADS_PATH` to a download folder. Both must exist and be writable. On Linux or a NAS, set `PUID` and `PGID` to the folder owner's IDs.
 4. Start:
 
 ```sh
 docker compose -f compose.transmission.yaml up -d --build
 ```
 
-Open **http://JE-NAS-ADRES:8765**, gebruikersnaam **admin**, met `PLEXPORT_PASSWORD` als wachtwoord. Transmission is bereikbaar op **http://JE-NAS-ADRES:9091** met de Transmission-gegevens uit `.env`. Stoppen: `docker compose -f compose.transmission.yaml down`. Instellingen, torrents en media blijven in de gekoppelde mappen bewaard.
+Open **http://YOUR-NAS-ADDRESS:8765**, with username **admin** and `PLEXPORT_PASSWORD`. Transmission is available at **http://YOUR-NAS-ADDRESS:9091** using the Transmission credentials in `.env`. Stop with `docker compose -f compose.transmission.yaml down`. Settings, torrents and media remain in mounted folders.
 
-Deze opstelling maakt de bedieningsschermen bereikbaar op je NAS met wachtwoordbeveiliging. Gebruik bij toegang via het internet een reverse proxy met HTTPS; de app bevat zelf geen TLS-server.
+This setup makes the controls reachable on your NAS with password authentication. For internet access, use a reverse proxy with HTTPS; the app does not include a TLS server.
 
-## Instellen
+## Configure connections
 
-Open **Instellingen** en sla daarna iedere verbinding op en test hem.
+Open **Instellingen (Settings)**, then save and test each connection.
 
 ### Downloader
 
-- **Transmission:** volledig RPC-adres, bijvoorbeeld `http://127.0.0.1:9091/transmission/rpc`. In de meegeleverde Docker-opstelling is het `http://transmission:9091/transmission/rpc`.
-- **qBittorrent:** schakel de Web UI in en gebruik het basisadres, bijvoorbeeld `http://192.168.1.20:8080`, met gebruikersnaam en wachtwoord. De koppeling is bedoeld voor qBittorrent 4.6+ en 5.x, inclusief pauzeren/hervatten.
-- Vul de downloadmap in zoals de **downloader** die ziet, en dezelfde map zoals **PlexPort** die ziet. De downloader moet zijn bestanden daadwerkelijk in die gedeelde map schrijven. Iedere taak krijgt een eigen submap.
+- **Transmission:** use the full RPC address, such as `http://127.0.0.1:9091/transmission/rpc`. The supplied Docker setup uses `http://transmission:9091/transmission/rpc`.
+- **qBittorrent:** enable its Web UI and use the base address, such as `http://192.168.1.20:8080`, with a username and password. The integration targets qBittorrent 4.6+ and 5.x, including pause and resume.
+- Enter the download folder as the **downloader** sees it, and the same folder as **PlexPort** sees it. The downloader must actually write files to that shared folder. Each task gets its own subfolder.
 
-Voorbeeld: qBittorrent draait op een NAS en schrijft naar `/volume1/downloads`. Die map is op je Mac gemount als `/Volumes/downloads`. Stel het downloaderpad in op `/volume1/downloads` en het PlexPort-pad op `/Volumes/downloads`.
+Example: qBittorrent runs on a NAS and writes to `/volume1/downloads`. That folder is mounted on your Mac as `/Volumes/downloads`. Set the downloader path to `/volume1/downloads` and the PlexPort path to `/Volumes/downloads`.
 
-In Docker gebruiken beide standaard `/downloads`. Voor qBittorrent op de host van Docker gebruik je waar ondersteund `http://host.docker.internal:8080`; `localhost` in een container verwijst naar die container zelf.
+In Docker, both use `/downloads` by default. For qBittorrent on the Docker host, use `http://host.docker.internal:8080` where supported; `localhost` inside a container refers to that container itself.
 
 ### Plex
 
-Vul afzonderlijke film- en seriemappen in die **PlexPort kan lezen en beschrijven** en die ook door je Plex-server worden gelezen. Een server op een NAS of andere computer vereist dus een gemounte SMB/NFS-map of een Docker-volumekoppeling. Alleen het Plex-serveradres invullen is onvoldoende: de Plex API biedt geen upload van mediabestanden.
+Set separate movie and TV folders that **PlexPort can read and write** and that your Plex server also reads. A server on a NAS or another computer therefore needs a mounted SMB/NFS folder or Docker volume mount. Entering only the Plex address is not enough: the Plex API does not upload media files.
 
-Met Docker zijn de app-paden standaard `/media/Movies` en `/media/TV Shows`. Bij `compose.build.yaml` en `compose.transmission.yaml`: als `MEDIA_PATH=/volume1/media` is, configureer je in Plex de bibliotheekmappen `/volume1/media/Movies` en `/volume1/media/TV Shows`, of de equivalente paden in je Plex-container.
+With Docker, the app paths default to `/media/Movies` and `/media/TV Shows`. For `compose.build.yaml` and `compose.transmission.yaml`, if `MEDIA_PATH=/volume1/media`, configure Plex to read `/volume1/media/Movies` and `/volume1/media/TV Shows`, or their equivalent paths inside the Plex container.
 
-Voor een scan na import vul je het Plex-adres en token in. **Plex testen** toont de bibliotheken en hun ID's. Neem de juiste ID over bij films en series. Je vindt uitleg over het token in [Plex Support](https://support.plex.tv/articles/204059436-finding-an-authentication-token-x-plex-token/).
+For scanning after import, enter the Plex address and token. **Opslaan & Plex testen (Save & test Plex)** lists libraries and their IDs. Enter the appropriate movie and TV IDs. See [Plex Support for token instructions](https://support.plex.tv/articles/204059436-finding-an-authentication-token-x-plex-token/).
 
-Zonder Plex-token worden bestanden wel geïmporteerd. Zet dan automatisch of periodiek scannen aan in Plex. Netwerkmappen ondersteunen niet altijd automatische wijzigingsdetectie; een API-scan of periodieke scan is dan nodig. [Plex-bibliotheekinstellingen](https://support.plex.tv/articles/200289526-library/)
+Files are imported even without a Plex token. Enable automatic or periodic scanning in Plex in that case. Network folders do not always support automatic change detection, so an API scan or periodic scan may be needed. See [Plex library settings](https://support.plex.tv/articles/200289526-library/).
 
-Een geslaagde scan-aanvraag betekent dat Plex de aanvraag heeft geaccepteerd; de app controleert niet of Plex de titel vervolgens correct herkent. Het Bibliotheek-scherm toont alleen imports van PlexPort, niet je volledige Plex-catalogus.
+A successful scan request means Plex accepted it; the app does not verify that Plex subsequently identifies the title correctly. The Library screen shows only PlexPort imports, not your full Plex catalog.
 
-### Bronnen / films en series zoeken
+### Sources and search
 
-Klik bij **Instellingen → Jouw bronnen → WatchSoMuch toevoegen** om [WatchSoMuch](https://watchsomuch.to) rechtstreeks te koppelen. Sla daarna de instellingen op. Er is geen account, API-sleutel, Jackett of Prowlarr nodig voor deze bron. PlexPort gebruikt de openbare RSS-zoekfeed en downloadlijsten, toont varianten met grootte en seeders en haalt de magnetlink pas op wanneer je een download start. Bij series worden herkende seizoen- en afleveringsnummers alvast ingevuld. Controleer die vóór het starten.
+Under **Instellingen → Jouw bronnen → WatchSoMuch toevoegen (Settings → Your sources → Add WatchSoMuch)**, connect [WatchSoMuch](https://watchsomuch.to) directly and save settings. This source needs no account, API key, Jackett or Prowlarr. PlexPort uses public RSS search feeds and download lists, shows versions with size and seeders, and retrieves the magnet link only when starting a download. Recognized TV season and episode numbers are filled in ahead of time; check them before starting.
 
-Een zoekopdracht leest maximaal vijf gevonden titels en toont maximaal 250 varianten, met een cache van vijf minuten. Zoek zo specifiek mogelijk. Wijzigingen of tijdelijke blokkades op de website kunnen de koppeling onderbreken; PlexPort start dan geen download met een ongeldige link.
+A search reads up to five matching titles and shows up to 250 versions, cached for five minutes. Search as specifically as possible. Website changes or temporary blocks may interrupt the integration; PlexPort will not start a download using an invalid link.
 
-Voor andere bronnen voeg je de **Torznab-feed** en API-sleutel toe. [Prowlarr](https://wiki.servarr.com/prowlarr) en [Jackett](https://github.com/Jackett/Jackett) bieden zulke feeds voor hun ingestelde indexers. Kopieer de Torznab-URL uit je bronbeheerder. PlexPort zoekt in de categorieën Movies (2000) of TV (5000); resultaten worden gesorteerd op seeders.
+For other sources, add a **Torznab feed** and API key. [Prowlarr](https://wiki.servarr.com/prowlarr) and [Jackett](https://github.com/Jackett/Jackett) provide these feeds for their configured indexers. Copy the Torznab URL from your source manager. PlexPort searches Movies (2000) or TV (5000) categories; results are sorted by seeders.
 
-Je activeert zelf welke bronnen je wilt gebruiken; er worden geen accounts meegeleverd. Je kunt zonder zoekbron ook een magnetlink, torrent-URL of `.torrent`-bestand toevoegen.
+You choose which sources to enable; no accounts are supplied. Without a search source, you can still add a magnet link, torrent URL or `.torrent` file.
 
-## Hoe import werkt
+## How importing works
 
-1. Voeg een download toe en controleer de **titel voor Plex**. WatchSoMuch vult de titel en het jaar vanuit de zoekfeed in. Bij Torznab staat de releasenaam ingevuld; pas die aan naar de echte film- of serietitel en vul eventueel het jaar in.
-2. PlexPort bewaart de taak in SQLite en stuurt hem naar de downloader. De voortgang wordt iedere vier seconden bijgewerkt.
-3. Alleen complete, geselecteerde videobestanden en ondertitels worden geïmporteerd. De app controleert de bereikbaarheid en bestandsgrootte. Samples en overige bestanden worden overgeslagen. RAR/ZIP-archieven worden niet uitgepakt.
-4. Films komen in `Titel (jaar)/Titel (jaar).mkv`. De grootste video wordt als hoofdvideo benoemd; eventuele andere video's behouden hun bestandsnaam in dezelfde map. Series komen in `Serie/Season 01/Serie - S01E01.mkv`. Seizoenpakketten vereisen afleveringsnummers in de bestandsnamen. Bij één aflevering kun je seizoen en aflevering handmatig opgeven.
-5. Op hetzelfde bestandssysteem gebruikt de app hardlinks; op een andere schijf of netwerkshare kopieert hij de bestanden. De download blijft op zijn plaats voor seeding. Kopiëren kan daarom extra schijfruimte kosten.
-6. Na import wordt, indien ingesteld, een Plex-scan aangevraagd. Een fout in de scan verwijdert de geïmporteerde media niet. Gebruik **Opnieuw proberen** nadat je de instellingen hebt hersteld.
+1. Add a download and check **Titel voor Plex (Title for Plex)**. WatchSoMuch fills the title and year from the search feed. Torznab fills the release name; change it to the actual movie or show title and optionally enter the year.
+2. PlexPort saves the task in SQLite and sends it to the downloader. Progress updates every four seconds.
+3. Only complete, selected video files and subtitles are imported. The app checks accessibility and file sizes. Samples and other files are skipped. RAR/ZIP archives are not extracted.
+4. Movies are placed in `Title (year)/Title (year).mkv`. The largest video is named as the main video; other videos keep their filenames in that folder. TV shows use `Show/Season 01/Show - S01E01.mkv`. Season packs require episode codes in filenames. For a single episode, you can enter season and episode manually.
+5. The app uses hardlinks on the same filesystem where supported; it copies files across disks or network shares. The original download stays in place for seeding. Copying can use extra space.
+6. After import, a Plex scan is requested if configured. A failed scan does not remove imported media. Use **Opnieuw proberen (Retry)** after fixing settings.
 
-Alleen downloads die je via PlexPort toevoegt worden op deze manier geïmporteerd. Een torrent die je rechtstreeks in de qBittorrent-Web UI toevoegt, blijft in de downloadmap en krijgt geen automatische PlexPort-import.
+Only downloads added through PlexPort are imported this way. Torrents added directly through qBittorrent's Web UI stay in the download folder without an automatic PlexPort import.
 
-De app vervangt geen bestaande media met andere inhoud. Dubbele torrents worden geweigerd. Niet alle releasenamen, extra's en ondertiteltalen zijn automatisch te herkennen; controleer de titel en gebruik episodecodes bij series. PlexPort transcodeert niet en downloadt geen ondertitels.
+The app does not replace existing media with different content. Duplicate torrents are rejected. Not all release names, extras or subtitle languages can be recognized automatically; check titles and use episode codes for TV shows. PlexPort does not transcode or download subtitles.
 
-## Gegevens & toegang
+## Data and access
 
-Instellingen, toegangsgegevens en taakgeschiedenis staan lokaal in `data/plexport.sqlite` met bestandsrechten `0600`. Geheimen worden niet teruggestuurd naar het instellingenformulier; lege wachtwoordvelden behouden de opgeslagen waarden. Ze zijn wel nodig in de lokale database om de diensten te benaderen. Bescherm backups van deze map. Om een opgeslagen geheim te verwijderen kun je via de lokale API expliciet een lege waarde opslaan.
+Settings, credentials and task history are stored locally in `data/plexport.sqlite` with file permissions `0600`. Secrets are not returned to the settings form; blank password fields retain saved values. Credentials are needed in the local database to connect to services. Protect backups of this folder. To remove a saved secret, the local API can explicitly save an empty value.
 
-De losse app luistert standaard uitsluitend op `127.0.0.1`. Voor een andere luisterinterface moet je `PLEXPORT_PASSWORD` instellen; aanmelden gebeurt met `admin` en dat wachtwoord. API-verzoeken hebben een eigen header en controle op de browser-origin. Er wordt geen telemetry verstuurd en de interface gebruikt geen externe fonts of scripts.
+The standalone app listens only on `127.0.0.1` by default. For another listening interface, set `PLEXPORT_PASSWORD`; sign in as `admin` with that password. API requests require a dedicated header and browser-origin validation. No telemetry is sent, and the interface uses no external fonts or scripts.
 
-## Ontwikkeling & verificatie
+## Development and verification
 
 ```sh
 python3 -m unittest discover -s tests -v
 node --check plexport/static/app.js
-```
-
-De tests gebruiken tijdelijke mappen en lokale testservers. Ze verifiëren de torrent-API's, import, herstarten, padbeveiliging, secret-redactie, zoekfeeds en browser-API. Een echte torrentclient, Docker-installatie, externe zoekbron en Plex-server zijn nodig om de koppelingen in jouw omgeving te testen.
-
-## Nieuwe bediening
-
-Zoekfilters worden in de browser toegepast op de maximaal 250 resultaten van de bestaande zoekaanvraag. De beeldkwaliteit wordt afgeleid uit de releasenaam; dit is geen verificatie van de video. Bij een bestandsgroottelimiet vallen resultaten met onbekende grootte buiten de selectie.
-
-`POST /api/preflight` controleert de opgeslagen downloadmap en de bestemming van de gekozen categorie. Het verzoek bevat `kind` (`movie` of `tv`) en optioneel `expected_bytes` (niet-negatief geheel getal). De controle schrijft en verwijdert een tijdelijk testbestand en leest de vrije ruimte. Zij maakt geen ontbrekende map aan en bewijst niet dat een externe downloader dezelfde fysieke map gebruikt. Er wordt geen ruimte gereserveerd. Ook andere taken en datasetquota kunnen het resultaat beïnvloeden.
-
-Het toevoegen van een taak controleert de mappen opnieuw. Een nog niet verstuurde taak wordt ook door de worker opnieuw gecontroleerd. Bij reeds verstuurde taken blijft het oorspronkelijke downloaderadres en pad behouden. Ontbrekende film- of seriemappen blokkeren de start; alleen de bestemming van de gekozen categorie is daarvoor nodig.
-
-De bekende grootte uit het gekozen zoekresultaat wordt gebruikt om een download te weigeren die groter is dan de op dat moment beschikbare ruimte. Handmatige links en torrentbestanden hebben in deze versie nog geen vooraf bekende grootte. Als hardlinks niet mogelijk zijn, controleert de kopieerstap aanvullend de vrije ruimte van de mediamap.
-
-De activiteit uit qBittorrent of Transmission wordt los van de importstatus opgeslagen. Controleren, voorbereiden, wachten, verplaatsen en downloaden krijgen verschillende meldingen. qBittorrent-taken die bestanden verplaatsen, controleren of metadata ophalen worden niet geïmporteerd, ook niet wanneer hun voortgang op 100% staat.
-
-Frontend-filters testen:
-
-```sh
 node --test tests/test_discovery.cjs
 ```
+
+Tests use temporary folders and local test servers. They cover torrent APIs, imports, restarts, path protection, secret redaction, search feeds and the browser API. A real torrent client, Docker installation, external source and Plex server are needed to test integrations in your own environment.
+
+## Updated controls
+
+Search filters run in the browser on the existing search request's maximum 250 results. Quality is inferred from the release name; it is not video verification. A maximum size excludes results whose size is unknown.
+
+`POST /api/preflight` checks the saved download folder and destination for the selected category. The request includes `kind` (`movie` or `tv`) and optional `expected_bytes` (a nonnegative integer). It writes and removes a temporary test file and reads free space. It does not create missing folders or prove that an external downloader uses the same physical folder. No space is reserved. Other tasks and dataset quotas can affect the result.
+
+Adding a task checks the folders again. The worker also rechecks a task that has not yet been submitted. Already submitted tasks retain their original downloader address and path. Missing movie or TV folders block starting the relevant category; only that category's destination is required.
+
+The known size from a selected search result is used to reject a download larger than the space currently available. Manual links and torrent files do not have a known size in advance in this version. If hardlinks are unavailable, the copy step also checks free space in the media folder.
+
+Activity from qBittorrent or Transmission is saved separately from import status. Checking, preparing, waiting, moving and downloading have distinct messages. qBittorrent tasks that are moving files, checking or fetching metadata are not imported, even if progress shows 100%.

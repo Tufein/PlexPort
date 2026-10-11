@@ -1,14 +1,14 @@
-# Help PlexPort beter te maken
+# Help improve PlexPort
 
-Een technische achtergrond is niet nodig om te helpen. [Meld een probleem](https://github.com/Tufein/PlexPort/issues/new?template=probleem.yml), [stel een functie voor](https://github.com/Tufein/PlexPort/issues/new?template=idee.yml) of vertel welke uitleg je niet begrijpt.
+You do not need a technical background to help. [Report a problem](https://github.com/Tufein/PlexPort/issues/new?template=probleem.yml), [suggest a feature](https://github.com/Tufein/PlexPort/issues/new?template=idee.yml), or tell us which instructions are confusing.
 
-Gebruik voorbeelden zonder persoonlijke toegangsgegevens. Alle meldingen in deze repository zijn openbaar.
+Use examples without private access details. Reports in this repository are public. English is welcome.
 
-## Voor wie de code aanpast
+## Changing the code
 
-Houd de bediening Nederlandstalig en gebruik gewone woorden. Bescherm bestaande instellingen, downloads en media. Downloadtaken mogen niet stilzwijgend naar een andere downloader worden verplaatst. Voeg bij wijzigingen aan de verwerking een test toe die het echte risico controleert.
+Use plain language in the interface. It currently uses Dutch labels; English repository documentation should include those labels when explaining which buttons to press. Protect existing settings, downloads and media. Download tasks must not silently move to another downloader. When changing processing behavior, add a test that checks the actual risk.
 
-Voer vanuit de projectmap uit:
+Run these from the project folder:
 
 ```sh
 python3 -m unittest discover -s tests -v
@@ -16,4 +16,4 @@ node --test tests/test_discovery.cjs
 node --check plexport/static/app.js
 ```
 
-Controleer nieuwe bediening in een brede en smalle browserweergave en in licht en donker. [Technische uitleg](docs/TECHNISCH.md).
+Check new controls in wide and narrow browser layouts and in light and dark mode. See the [technical guide](docs/TECHNISCH.md).
