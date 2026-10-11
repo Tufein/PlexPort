@@ -2,10 +2,16 @@
 <resources>
     <style name="AppTheme" parent="android:style/Theme.Material.Light.NoActionBar">
         <item name="android:fontFamily">sans</item>
-        <item name="android:colorAccent">#C06030</item>
+        <item name="android:colorAccent">@color/accent</item>
         <item name="android:windowLightStatusBar">true</item>
         <item name="android:windowActionModeOverlay">true</item>
+        <item name="android:windowBackground">@color/surface</item>
     </style>
-    <color name="surface">#FAF8F4</color>
-    <color name="text">#242424</color>
+    <color name="surface">#F4F6FA</color>
+    <color name="text">#172033</color>
+    <color name="muted">#69758A</color>
+    <color name="line">#E3E8F0</color>
+    <color name="card">#FFFFFF</color>
+    <color name="accent">#6366F1</color>
+    <color name="error">#B54C36</color>
 </resources>

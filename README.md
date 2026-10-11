@@ -9,11 +9,11 @@
 Find a movie or TV show, choose a version and follow the download.
 PlexPort puts completed videos in the right media folder.
 
-[Get started](#get-started) · [How to use it](docs/GEBRUIKEN.md) · [Need help?](docs/HULP.md) · [Download Android app](https://github.com/Tufein/PlexPort/raw/refs/heads/main/android/dist/PlexPort-1.1.0.apk)
+[Get started](#get-started) · [How to use it](docs/GEBRUIKEN.md) · [Need help?](docs/HULP.md) · [Download Android app](https://github.com/Tufein/PlexPort/raw/refs/heads/main/android/dist/PlexPort-1.2.0.apk)
 
 </div>
 
-![PlexPort search screen with quality, size and source filters](docs/images/ontdekken.png)
+![PlexPort overview with a modern layout and download progress](docs/images/overview.png)
 
 *Example screen with demo titles. Your search results come from the sources you add. The app currently uses Dutch labels; the guides explain which buttons to choose.*
 
@@ -24,7 +24,15 @@ PlexPort puts completed videos in the right media folder.
 - **Organize movies and shows.** Completed videos and subtitles go to your chosen Plex folders.
 - **Catch problems early.** Check connections and folders with one button. See available space before starting a download.
 - **Use your phone.** The Android app opens the same PlexPort server and the same downloads.
-- **Choose your look.** Light, dark or your device's setting.
+- **Choose your look.** A modern layout with light, dark or your device's setting.
+- **Sign in easily.** A dedicated welcome screen on the website and Android app, with a password visibility option.
+
+<details>
+<summary>See the new website sign-in screen</summary>
+
+![PlexPort website sign-in screen](docs/images/login.png)
+
+</details>
 
 ## What do you need?
 

@@ -5,6 +5,7 @@ import android.app.AlertDialog;
 import android.annotation.SuppressLint;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.graphics.drawable.GradientDrawable;
 import android.net.Uri;
 import android.net.http.SslError;
 import android.os.Build;
@@ -30,11 +31,13 @@ import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.webkit.WebViewDatabase;
 import android.widget.Button;
+import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.PopupMenu;
 import android.widget.ProgressBar;
+import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -94,6 +97,32 @@ public final class MainActivity extends Activity {
     private int dp(int value) { return Math.round(value * getResources().getDisplayMetrics().density); }
     private int color(int resource) { return getResources().getColor(resource, getTheme()); }
 
+    private GradientDrawable rounded(int fill, int border, int radius) {
+        GradientDrawable shape = new GradientDrawable();
+        shape.setColor(fill);
+        shape.setCornerRadius(dp(radius));
+        if (border != 0) shape.setStroke(dp(1), border);
+        return shape;
+    }
+
+    private void loginLabel(LinearLayout fields, String text) {
+        TextView label = new TextView(this);
+        label.setText(text);
+        label.setTextSize(13);
+        label.setTextColor(color(R.color.text));
+        label.setPadding(0, dp(18), 0, dp(8));
+        fields.addView(label);
+    }
+
+    private void styleInput(EditText input) {
+        input.setTextSize(16);
+        input.setTextColor(color(R.color.text));
+        input.setHintTextColor(color(R.color.muted));
+        input.setPadding(dp(14), dp(12), dp(14), dp(12));
+        input.setBackground(rounded(color(R.color.surface), color(R.color.line), 10));
+        input.setMinHeight(dp(52));
+    }
+
     private void buildLayout() {
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
@@ -116,7 +145,7 @@ public final class MainActivity extends Activity {
         toolbar.setGravity(Gravity.CENTER_VERTICAL);
         toolbar.setPadding(dp(16), dp(4), dp(8), dp(4));
         TextView title = new TextView(this);
-        title.setText("PlexPort");
+        title.setText("❯  PlexPort");
         title.setTextSize(20);
         title.setTextColor(color(R.color.text));
         title.setTypeface(null, android.graphics.Typeface.BOLD);
@@ -124,6 +153,8 @@ public final class MainActivity extends Activity {
         title.setGravity(Gravity.CENTER_VERTICAL);
         Button menu = new Button(this);
         menu.setText("Menu");
+        menu.setTextColor(color(R.color.accent));
+        menu.setBackground(rounded(color(R.color.card), color(R.color.line), 10));
         menu.setContentDescription("PlexPort-menu: NAS-adres, opnieuw laden en afmelden");
         menu.setOnClickListener(v -> showMenu(menu));
         toolbar.addView(menu, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, dp(48)));
@@ -343,29 +374,77 @@ public final class MainActivity extends Activity {
         cancelAuth();
         LinearLayout fields = new LinearLayout(MainActivity.this);
         fields.setOrientation(LinearLayout.VERTICAL);
-        fields.setPadding(dp(24), dp(12), dp(24), 0);
+        fields.setPadding(dp(24), dp(24), dp(24), dp(8));
         fields.setImportantForAutofill(View.IMPORTANT_FOR_AUTOFILL_NO_EXCLUDE_DESCENDANTS);
+        TextView brand = new TextView(this);
+        brand.setText("❯  PlexPort");
+        brand.setTextColor(color(R.color.accent));
+        brand.setTextSize(18);
+        brand.setTypeface(null, android.graphics.Typeface.BOLD);
+        fields.addView(brand);
+        TextView welcome = new TextView(this);
+        welcome.setText("Welkom terug");
+        welcome.setTextSize(28);
+        welcome.setTextColor(color(R.color.text));
+        welcome.setTypeface(null, android.graphics.Typeface.BOLD);
+        welcome.setPadding(0, dp(22), 0, dp(8));
+        fields.addView(welcome);
         TextView note = new TextView(MainActivity.this);
-        note.setText("Gebruik je PlexPort-aanmelding. Het wachtwoord wordt niet opgeslagen.\n" + server);
+        note.setText("Meld je aan bij jouw mediaruimte.");
+        note.setTextSize(14);
+        note.setTextColor(color(R.color.muted));
         fields.addView(note);
+        TextView serverLabel = new TextView(this);
+        serverLabel.setText(server);
+        serverLabel.setTextSize(12);
+        serverLabel.setTextColor(color(R.color.muted));
+        serverLabel.setPadding(dp(12), dp(10), dp(12), dp(10));
+        serverLabel.setBackground(rounded(color(R.color.surface), color(R.color.line), 8));
+        LinearLayout.LayoutParams serverParams = new LinearLayout.LayoutParams(-1, -2);
+        serverParams.topMargin = dp(18);
+        fields.addView(serverLabel, serverParams);
+        loginLabel(fields, "Gebruikersnaam");
         EditText user = new EditText(MainActivity.this);
         user.setSingleLine(true);
         user.setHint("Gebruikersnaam");
         user.setText("admin");
         user.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD);
+        styleInput(user);
         fields.addView(user);
+        loginLabel(fields, "PlexPort-wachtwoord");
         EditText password = new EditText(MainActivity.this);
         password.setSingleLine(true);
-        password.setHint("PlexPort-wachtwoord");
+        password.setHint("Vul je wachtwoord in");
         password.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD);
+        styleInput(password);
         fields.addView(password);
+        CheckBox showPassword = new CheckBox(this);
+        showPassword.setText("Toon wachtwoord");
+        showPassword.setTextSize(13);
+        showPassword.setTextColor(color(R.color.muted));
+        showPassword.setMinHeight(dp(48));
+        showPassword.setOnCheckedChangeListener((button, checked) -> {
+            int selection = password.getSelectionStart();
+            password.setInputType(InputType.TYPE_CLASS_TEXT | (checked ? InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD : InputType.TYPE_TEXT_VARIATION_PASSWORD));
+            password.setSelection(Math.max(0, selection));
+        });
+        fields.addView(showPassword);
         TextView feedback = new TextView(MainActivity.this);
         feedback.setTextSize(14);
+        feedback.setTextColor(color(R.color.error));
         feedback.setPadding(0, dp(12), 0, dp(8));
         feedback.setVisibility(View.GONE);
         fields.addView(feedback);
-        authDialog = new AlertDialog.Builder(MainActivity.this).setTitle("Aanmelden bij PlexPort")
-                .setView(fields).setNegativeButton("Annuleren", (d, w) -> {
+        TextView privacy = new TextView(this);
+        privacy.setText("Gebruik je PlexPort-wachtwoord. Je wachtwoord wordt niet opgeslagen op je telefoon.");
+        privacy.setTextSize(12);
+        privacy.setTextColor(color(R.color.muted));
+        privacy.setPadding(0, dp(10), 0, dp(12));
+        fields.addView(privacy);
+        ScrollView scroll = new ScrollView(this);
+        scroll.addView(fields);
+        authDialog = new AlertDialog.Builder(MainActivity.this)
+                .setView(scroll).setNegativeButton("Annuleren", (d, w) -> {
                     cancelAuth();
                     showError("Je bent niet aangemeld", "Kies ‘Opnieuw proberen’ om aan te melden.");
                 }).setPositiveButton("Aanmelden", null).create();
@@ -373,7 +452,16 @@ public final class MainActivity extends Activity {
             cancelAuth();
             showError("Je bent niet aangemeld", "Kies ‘Opnieuw proberen’ om aan te melden.");
         });
-        authDialog.setOnShowListener(d -> authDialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
+        authDialog.setOnShowListener(d -> {
+            authDialog.getWindow().setBackgroundDrawable(rounded(color(R.color.card), color(R.color.line), 20));
+            Button signIn = authDialog.getButton(AlertDialog.BUTTON_POSITIVE);
+            signIn.setTextColor(android.graphics.Color.WHITE);
+            signIn.setAllCaps(false);
+            signIn.setBackgroundTintList(null);
+            signIn.setBackground(rounded(0xff6366f1, 0, 10));
+            signIn.setPadding(dp(20), dp(10), dp(20), dp(10));
+            signIn.setMinHeight(dp(48));
+            signIn.setOnClickListener(v -> {
             if (user.getText().toString().trim().isEmpty()) { user.setError("Vul je gebruikersnaam in."); return; }
             if (password.getText().length() == 0) { password.setError("Vul je PlexPort-wachtwoord in."); return; }
             String chosenUser = user.getText().toString().trim();
@@ -401,7 +489,8 @@ public final class MainActivity extends Activity {
                     loadServer();
                 });
             });
-        }));
+            });
+        });
         authDialog.setCanceledOnTouchOutside(false);
         authDialog.show();
     }

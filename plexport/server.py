@@ -2,13 +2,16 @@ import argparse
 import base64
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import hmac
+from http.cookies import SimpleCookie
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import ipaddress
 import json
 import mimetypes
 import os
 from pathlib import Path
+import secrets
 import threading
+import time
 import urllib.parse
 import webbrowser
 
@@ -21,6 +24,22 @@ STATIC = Path(__file__).parent / 'static'
 def create_server(host, port, store, password=''):
     worker = Worker(store)
     checks = {}
+    sessions = {}
+    failures = {}
+    auth_lock = threading.Lock()
+    cookie_name = 'plexport_session'
+
+    def new_session():
+        now = time.monotonic()
+        with auth_lock:
+            for token, expires in list(sessions.items()):
+                if expires <= now:
+                    del sessions[token]
+            if len(sessions) >= 1024:
+                del sessions[next(iter(sessions))]
+            token = secrets.token_urlsafe(32)
+            sessions[token] = now + 12 * 3600
+        return token
 
     class Handler(BaseHTTPRequestHandler):
         def log_message(self, fmt, *args):
@@ -28,18 +47,57 @@ def create_server(host, port, store, password=''):
             if len(args) > 1 and str(args[1]) != '200':
                 print('PlexPort HTTP', args[1])
 
-        def send(self, value, status=200, content_type='application/json; charset=utf-8'):
+        def send(self, value, status=200, content_type='application/json; charset=utf-8', headers=None):
             body = json.dumps(value, ensure_ascii=False).encode() if isinstance(value, (dict, list)) else value
             self.send_response(status)
             self.send_header('Content-Type', content_type)
             self.send_header('Content-Length', str(len(body)))
             self.send_header('Cache-Control', 'no-store')
             self.send_header('X-Content-Type-Options', 'nosniff')
+            self.send_header('Referrer-Policy', 'same-origin')
             self.send_header('Content-Security-Policy', "default-src 'self'; style-src 'self'; script-src 'self'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'")
+            for name, value in headers or []:
+                self.send_header(name, value)
+            if getattr(self, 'session_upgrade', None):
+                self.send_header('Set-Cookie', self.session_cookie(self.session_upgrade))
             self.end_headers()
             self.wfile.write(body)
 
-        def allowed(self):
+        def cookies(self):
+            try:
+                jar = SimpleCookie()
+                jar.load(self.headers.get('Cookie', ''))
+                return {name: value.value for name, value in jar.items()}
+            except Exception:
+                return {}
+
+        def session_cookie(self, token, clear=False):
+            # Browser HTTPS origins also cover a TLS reverse proxy without trusting forwarded headers.
+            https_origin = self.headers.get('Origin') == 'https://' + self.headers.get('Host', '')
+            secure = '; Secure' if hasattr(self.connection, 'cipher') or https_origin else ''
+            return f'{cookie_name}={token}; Path=/; HttpOnly; SameSite=Strict{secure}' + ('; Max-Age=0' if clear else '')
+
+        def authenticated(self):
+            self.authentication = 'none'
+            if not password:
+                return True
+            jar = self.cookies()
+            with auth_lock:
+                if sessions.get(jar.get(cookie_name, ''), 0) > time.monotonic():
+                    self.authentication = 'session'
+                    return True
+            expected = 'Basic ' + base64.b64encode(('admin:' + password).encode()).decode()
+            if jar.get('plexport_signed_out') != '1' and hmac.compare_digest(self.headers.get('Authorization', ''), expected):
+                self.authentication = 'basic'
+                return True
+            return False
+
+        def native_client(self):
+            # Existing Android WebViews rely on the HTTP authentication challenge.
+            user_agent = self.headers.get('User-Agent', '')
+            return 'Android' in user_agent and '; wv)' in user_agent
+
+        def allowed(self, public=False):
             raw_host = self.headers.get('Host', '')
             parsed = urllib.parse.urlsplit('http://' + raw_host)
             if not password:
@@ -51,15 +109,13 @@ def create_server(host, port, store, password=''):
                 if not local:
                     self.send({'error': 'Alleen lokale toegang toegestaan.'}, 403)
                     return False
-            if password:
-                expected = 'Basic ' + base64.b64encode(('admin:' + password).encode()).decode()
-                if not hmac.compare_digest(self.headers.get('Authorization', ''), expected):
-                    self.send_response(401)
-                    self.send_header('WWW-Authenticate', 'Basic realm="PlexPort", charset="UTF-8"')
-                    self.send_header('Content-Length', '0')
-                    self.end_headers()
-                    return False
-            if self.path.startswith('/api/'):
+            if not public and not self.authenticated():
+                headers = []
+                if self.native_client():
+                    headers.append(('WWW-Authenticate', 'Basic realm="PlexPort", charset="UTF-8"'))
+                self.send({'error': 'Meld je opnieuw aan bij PlexPort.'}, 401, headers=headers)
+                return False
+            if self.path.startswith(('/api/', '/auth/')):
                 if self.headers.get('X-PlexPort') != '1':
                     self.send({'error': 'Ongeldig app-verzoek.'}, 403)
                     return False
@@ -71,12 +127,30 @@ def create_server(host, port, store, password=''):
 
         def do_GET(self):
             try:
+                parsed = urllib.parse.urlsplit(self.path)
+                public_assets = {'/login': 'login.html', '/login.js': 'login.js', '/theme.js': 'theme.js', '/style.css': 'style.css', '/favicon.svg': 'favicon.svg'}
+                if parsed.path in public_assets:
+                    if not self.allowed(public=True):
+                        return
+                    filename = public_assets[parsed.path]
+                    self.send((STATIC / filename).read_bytes(), content_type=mimetypes.guess_type(filename)[0] or 'application/octet-stream')
+                    return
+                if parsed.path == '/' and not self.authenticated() and not self.native_client() and not self.headers.get('Authorization'):
+                    if self.allowed(public=True):
+                        self.send((STATIC / 'login.html').read_bytes(), content_type='text/html; charset=utf-8')
+                    return
+                if parsed.path == '/' and self.cookies().get('plexport_signed_out') == '1' and not self.authenticated() and not self.native_client():
+                    if self.allowed(public=True):
+                        self.send((STATIC / 'login.html').read_bytes(), content_type='text/html; charset=utf-8')
+                    return
                 if not self.allowed():
                     return
-                parsed = urllib.parse.urlsplit(self.path)
+                if parsed.path == '/' and self.authentication == 'basic' and not self.native_client():
+                    # Upgrade browser-cached Basic credentials to an explicit session.
+                    self.session_upgrade = new_session()
                 if parsed.path == '/api/status':
                     jobs = [public_job(j) for j in store.jobs()]
-                    self.send({'jobs': jobs, 'checks': checks.copy(), 'configured_sources': len(store.settings()['sources'])})
+                    self.send({'jobs': jobs, 'checks': checks.copy(), 'configured_sources': len(store.settings()['sources']), 'authentication': self.authentication})
                 elif parsed.path == '/api/settings':
                     self.send(public_settings(store.settings()))
                 elif parsed.path == '/api/search':
@@ -111,17 +185,48 @@ def create_server(host, port, store, password=''):
 
         def do_POST(self):
             try:
-                if not self.allowed():
+                login = self.path == '/auth/login'
+                if not self.allowed(public=login):
                     return
                 length = int(self.headers.get('Content-Length', 0))
-                if length <= 0 or length > 12 * 1024 * 1024:
+                if length <= 0 or length > (4096 if login else 12 * 1024 * 1024):
                     raise ValueError('Verzoek ontbreekt of is te groot.')
                 if self.headers.get_content_type() != 'application/json':
                     raise ValueError('JSON-verzoek vereist.')
                 data = json.loads(self.rfile.read(length))
                 if not isinstance(data, dict):
                     raise ValueError('Ongeldig verzoek.')
-                if self.path == '/api/settings':
+                if login:
+                    if not password:
+                        self.send({'ok': True})
+                        return
+                    username, supplied = data.get('username'), data.get('password')
+                    if not isinstance(username, str) or not isinstance(supplied, str):
+                        raise ValueError('Vul je gebruikersnaam en wachtwoord in.')
+                    now, address = time.monotonic(), self.client_address[0]
+                    with auth_lock:
+                        for key, attempts in list(failures.items()):
+                            failures[key] = [t for t in attempts if t > now - 60]
+                            if not failures[key]:
+                                del failures[key]
+                        attempts = failures.setdefault(address, [])
+                        if len(attempts) >= 8:
+                            self.send({'error': 'Te vaak geprobeerd. Wacht een minuut en probeer opnieuw.'}, 429, headers=[('Retry-After', '60')])
+                            return
+                        valid = hmac.compare_digest(username.encode(), b'admin') and hmac.compare_digest(supplied.encode(), password.encode())
+                        if not valid:
+                            attempts.append(now)
+                        else:
+                            failures.pop(address, None)
+                    if not valid:
+                        self.send({'error': 'De gebruikersnaam of het wachtwoord klopt niet. Probeer opnieuw.'}, 401)
+                        return
+                    self.send({'ok': True}, headers=[('Set-Cookie', self.session_cookie(new_session())), ('Set-Cookie', 'plexport_signed_out=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0')])
+                elif self.path == '/auth/logout':
+                    with auth_lock:
+                        sessions.pop(self.cookies().get(cookie_name, ''), None)
+                    self.send({'ok': True}, headers=[('Set-Cookie', self.session_cookie('', clear=True)), ('Set-Cookie', 'plexport_signed_out=1; Path=/; HttpOnly; SameSite=Strict')])
+                elif self.path == '/api/settings':
                     with worker.lock:
                         result = store.save_settings(data)
                         checks.clear()

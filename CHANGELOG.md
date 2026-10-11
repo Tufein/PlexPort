@@ -1,5 +1,13 @@
 # What's new?
 
+## Website and Android 1.2 — October 11, 2026
+
+- A dedicated website sign-in page with theme selection, password visibility, clear errors and a sign-out button.
+- Modern blue and slate styling, larger text, clearer cards and mobile navigation.
+- A matching Android sign-in card with labeled fields, password visibility and clearer server details.
+- Android APK 1.2.0 retains the existing signing certificate and saved server address.
+- Browser sessions expire after 12 hours and are invalidated on sign-out. Existing Android and Basic Auth API clients remain supported.
+
 ## English documentation — October 11, 2026
 
 - The GitHub home page, setup guides, troubleshooting, roadmap and contribution instructions are now in English.

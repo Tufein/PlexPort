@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="nl">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#f4f6fa"><script src="/theme.js"></script><title>Aanmelden · PlexPort</title><link rel="icon" href="/favicon.svg"><link rel="stylesheet" href="/style.css"><script src="/login.js" defer></script></head>
+<body class="login-page">
+<div class="login-shell">
+  <section class="login-story" aria-label="PlexPort">
+    <a class="brand" href="/"><span class="brandmark">❯</span>Plex<span>Port</span></a>
+    <div><p class="eyebrow">JOUW MEDIA. ÉÉN PLEK.</p><h1>Je volgende filmavond begint hier.</h1><p class="story-description">Van de eerste download tot een gevulde Plex-bibliotheek. Alles op je eigen server, ook vanaf je telefoon.</p></div>
+    <div class="login-route" aria-hidden="true"><span>Ontdekken</span>→<span>Downloaden</span>→<span>Plex</span></div>
+    <small>Een thuis voor je films en series.</small>
+  </section>
+  <main class="login-card">
+    <div class="login-top"><span class="login-lock" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><rect x="5" y="10" width="14" height="11" rx="3"/><path d="M8 10V7a4 4 0 0 1 8 0v3M12 14v3"/></svg></span><label class="theme-control"><span>Weergave</span><select id="theme-choice" aria-label="Weergave"><option value="system">Systeem</option><option value="light">Licht</option><option value="dark">Donker</option></select></label></div>
+    <h2>Welkom terug</h2><p class="subtitle">Meld je aan bij jouw PlexPort.</p>
+    <form id="login-form">
+      <label for="login-user">Gebruikersnaam<input id="login-user" name="username" value="admin" autocomplete="username" autocapitalize="none" spellcheck="false" required maxlength="100"></label>
+      <label for="login-password" class="password-label">PlexPort-wachtwoord</label><div class="password-field"><input id="login-password" name="password" type="password" autocomplete="current-password" required maxlength="1024" placeholder="Vul je wachtwoord in"><button type="button" id="password-toggle" class="password-toggle" aria-controls="login-password" aria-pressed="false">Tonen</button></div>
+      <p id="login-error" class="form-error login-message" role="alert" hidden></p>
+      <button class="primary" id="login-submit" type="submit"><span>Aanmelden</span><span aria-hidden="true">→</span></button>
+    </form>
+    <p class="login-footnote"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="m12 3 8 3v6c0 5-8 9-8 9s-8-4-8-9V6z"/></svg><span>Gebruik je PlexPort-wachtwoord. Je TrueNAS- en qBittorrent-aanmelding zijn voor hun eigen apps.</span></p>
+    <div class="login-version">PlexPort · Jouw media, jouw server</div>
+  </main>
+</div>
+</body>
+</html>

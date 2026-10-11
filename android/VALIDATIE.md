@@ -1,17 +1,18 @@
-# Public Android APK 1.1.0 verification
+# Android APK 1.2.0 verification
 
 The public build uses a generic NAS address (`http://truenas.local:8765/`). Enter your own PlexPort address when opening it. Updates preserve an existing saved address.
 
 - Release build, URL unit checks and release lint pass.
-- `apksigner verify` confirms a valid signature with the same certificate as the public APK 1.0.0.
-- Package `nl.plexport.app`, version `1.1.0` / code `2`, Android 8 / API 26 or newer, target API 36. Only `INTERNET`; debugging disabled.
-- `../plexport/static/plexport.apk` is identical to `dist/PlexPort-1.1.0.apk`.
-- The native client is functionally unchanged from version 1.0. This build increases the installation version; new search filters, download statuses and storage checks come from the updated PlexPort server.
+- The release signature matches the previous APK, so this version can install as an update.
+- Package `nl.plexport.app`, version `1.2.0` / code `3`, Android 8 / API 26 or newer, target API 36. Only `INTERNET`; debugging disabled.
+- `../plexport/static/plexport.apk` is identical to `dist/PlexPort-1.2.0.apk`.
+- The native sign-in dialog now has labeled fields, rounded controls, password visibility and matching light and dark colors. The rest of the interface loads from your PlexPort server.
+- The personal build installed successfully in an isolated API 35 emulator. Native screen rendering could not be verified there; no physical phone check was performed.
 
 SHA256:
 
 ```text
-7094b389db19c07cfabada9e69a5a8e98c936cdbe2d69e10eb231ca51188322a
+1f3f47036a91eb9e9645e0288e3d6661c1bcd8e81ab7fd4b39df58cac18d1f01
 ```
 
-This build was not run again in an emulator or on a physical phone. These checks do not prove a complete download from Android through a NAS to Plex. The signing key is not in this repository.
+Build, signature and installation checks do not prove a complete download from Android through a NAS to Plex. The signing key is not in this repository.

@@ -4,7 +4,7 @@
 
 PlexPort is a local app that searches your sources, sends torrents to Transmission or qBittorrent, and imports completed media into your Plex folders. The current interface uses Dutch labels; repository documentation is in English.
 
-At the top, **Weergave (Appearance)** offers **Systeem (System)**, **Licht (Light)** and **Donker (Dark)**. Your choice is saved per browser. A signed [Android APK](../android/dist/PlexPort-1.1.0.apk) is available through **Instellingen → Android-app downloaden (Settings → Download Android app)** too. It uses the same NAS, sources and downloads. See the [Android guide](../android/README.md) and [download roadmap](../ROADMAP.md).
+At the top, **Weergave (Appearance)** offers **Systeem (System)**, **Licht (Light)** and **Donker (Dark)**. Your choice is saved per browser. A signed [Android APK](../android/dist/PlexPort-1.2.0.apk) is available through **Instellingen → Android-app downloaden (Settings → Download Android app)** too. It uses the same NAS, sources and downloads. See the [Android guide](../android/README.md) and [download roadmap](../ROADMAP.md).
 
 **TrueNAS 25.10 Goldeye:** follow [INSTALLATIE-TRUENAS.md](../INSTALLATIE-TRUENAS.md). `compose.yaml` and `compose.truenas.yaml` are examples for the Apps web interface. Adjust the NAS address, dataset paths and UID/GID, then set your own PlexPort password. PlexPort and qBittorrent must see the same physical download folder as `/downloads`.
 
@@ -92,7 +92,7 @@ The app does not replace existing media with different content. Duplicate torren
 
 Settings, credentials and task history are stored locally in `data/plexport.sqlite` with file permissions `0600`. Secrets are not returned to the settings form; blank password fields retain saved values. Credentials are needed in the local database to connect to services. Protect backups of this folder. To remove a saved secret, the local API can explicitly save an empty value.
 
-The standalone app listens only on `127.0.0.1` by default. For another listening interface, set `PLEXPORT_PASSWORD`; sign in as `admin` with that password. API requests require a dedicated header and browser-origin validation. No telemetry is sent, and the interface uses no external fonts or scripts.
+The standalone app listens only on `127.0.0.1` by default. For another listening interface, set `PLEXPORT_PASSWORD`; sign in as `admin` with that password. The website uses a dedicated sign-in page and an HttpOnly, SameSite=Strict session cookie. Sessions last up to 12 hours, stay in server memory and expire on server restart. Signing out invalidates the session, including browsers with cached Basic Auth credentials. Password login is limited to eight failed attempts per IP in a minute. Cookies are marked Secure on HTTPS sockets or an HTTPS browser login origin. Existing Android WebViews and Basic Auth API clients remain supported. API and authentication requests require a dedicated header and browser-origin validation. No telemetry is sent, and the interface uses no external fonts or scripts.
 
 ## Development and verification
 

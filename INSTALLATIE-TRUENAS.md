@@ -60,7 +60,7 @@ Under **Jouw bronnen (Your sources)**, add WatchSoMuch directly or configure a T
 
 ## Android and appearance
 
-Download the APK through **Instellingen → Android-app downloaden (Settings → Download Android app)**, or use `android/dist/PlexPort-1.1.0.apk`. Android 8 or newer is supported. Enter your own PlexPort server address; sources and tasks come from that server. The website offers System, Light and Dark appearance options, currently labeled **Systeem**, **Licht** and **Donker**. See the [Android instructions](android/README.md).
+Download the APK through **Instellingen → Android-app downloaden (Settings → Download Android app)**, or use `android/dist/PlexPort-1.2.0.apk`. Android 8 or newer is supported. Enter your own PlexPort server address; sources and tasks come from that server. The website offers System, Light and Dark appearance options, currently labeled **Systeem**, **Licht** and **Donker**. See the [Android instructions](android/README.md).
 
 ## Tools and troubleshooting
 

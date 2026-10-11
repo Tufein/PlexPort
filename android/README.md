@@ -2,13 +2,13 @@
 
 This Android app opens your existing PlexPort server on a NAS. Sources, qBittorrent, download statuses and Plex settings come from the same server as the website. Your phone does not run a torrent downloader.
 
-For a simple walkthrough, see [Install on Android](../docs/START-ANDROID.md). The current native and website interfaces use Dutch labels.
+For a simple walkthrough, see [Install on Android](../docs/START-ANDROID.md). The current native and website interfaces use Dutch labels. Version 1.2 adds a refreshed sign-in card with clear labels, a password visibility toggle and matching light and dark colors.
 
 ## Install and use
 
 You can download the APK on your phone through **PlexPort → Instellingen → Android-app downloaden (Settings → Download Android app)**.
 
-1. Put `dist/PlexPort-1.1.0.apk` on your Android phone and open it. If Android asks, allow installation from that browser or file app.
+1. Put `dist/PlexPort-1.2.0.apk` on your Android phone and open it. If Android asks, allow installation from that browser or file app.
 2. Connect to the same home network as your NAS, or a VPN that can reach it.
 3. Open **PlexPort** and enter your own server address. The public build suggests `http://truenas.local:8765/`; use your NAS IP if your network does not resolve that name. Change it later through **Menu → NAS-adres wijzigen (Change NAS address)**.
 4. Sign in as `admin` with your existing **PlexPort password**, not your qBittorrent or TrueNAS password.
@@ -39,7 +39,7 @@ From this folder:
 ./build-apk.sh
 ```
 
-This runs URL security unit checks and release lint, then builds a signed release APK in `dist/PlexPort-1.1.0.apk`. The filename follows the version in `app/build.gradle`. Its `.apk.sha256` file is refreshed on each build. Copy the new APK to `plexport/static/plexport.apk` in your NAS code folder to update the website download. For a development build, use `./gradlew assembleDebug`.
+This runs URL security unit checks and release lint, then builds a signed release APK in `dist/PlexPort-1.2.0.apk`. The filename follows the version in `app/build.gradle`. Its `.apk.sha256` file is refreshed on each build. Copy the new APK to `plexport/static/plexport.apk` in your NAS code folder to update the website download. For a development build, use `./gradlew assembleDebug`.
 
 Your first release build creates a signing key in **`android/.signing/plexport-release.jks`**, with private settings in **`android/.signing/signing.properties`**. Later builds reuse it; they do not replace or regenerate it. Back up the entire `.signing` folder securely: Android accepts updates only with the same signing key. The folder has restricted permissions and is excluded by `.gitignore`. Never share or publish it. If only one of the two files exists, the build stops to avoid creating a different key accidentally.
 

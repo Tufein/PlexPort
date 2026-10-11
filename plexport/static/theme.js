@@ -12,7 +12,7 @@
     const dark = preference === 'dark' || (preference === 'system' && system.matches);
     document.documentElement.dataset.theme = dark ? 'dark' : 'light';
     const color = document.querySelector('meta[name="theme-color"]');
-    if (color) color.content = dark ? '#141916' : '#f6f5f0';
+    if (color) color.content = dark ? '#10141d' : '#f4f6fa';
     const control = document.getElementById('theme-choice');
     if (control) control.value = preference;
   }
