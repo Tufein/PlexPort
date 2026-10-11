@@ -6,7 +6,7 @@ Deze Android-app opent jouw bestaande PlexPort op de NAS. Bronnen, qBittorrent, 
 
 Je kunt de APK rechtstreeks op je telefoon downloaden via **PlexPort → Instellingen → Android-app downloaden** op `http://192.168.1.100:8765/#settings`.
 
-1. Zet `dist/PlexPort-1.0.0.apk` op je Android-telefoon en open het bestand. Sta, als Android daarom vraagt, installatie vanuit die bestandsapp of browser toe.
+1. Zet `dist/PlexPort-1.1.0.apk` op je Android-telefoon en open het bestand. Sta, als Android daarom vraagt, installatie vanuit die bestandsapp of browser toe.
 2. Verbind met hetzelfde thuisnetwerk als je NAS, of een VPN die toegang geeft tot dat netwerk.
 3. Open **PlexPort** en vul je eigen NAS-adres in, bijvoorbeeld `http://192.168.1.100:8765/`. De eerste suggestie is `http://truenas.local:8765/`. Je kunt het adres later veranderen via **Menu → NAS-adres wijzigen**.
 4. Meld je aan met `admin` en je bestaande **PlexPort-wachtwoord**. Gebruik hier je PlexPort-aanmelding, niet je qBittorrent- of TrueNAS-wachtwoord.
@@ -35,7 +35,7 @@ Vanuit deze map:
 ./build-apk.sh
 ```
 
-Dit voert de URL-beveiligingschecks en release-lint uit en bouwt een ondertekende release-APK naar `dist/PlexPort-1.0.0.apk`. Het bijbehorende `.apk.sha256`-bestand wordt bij elke bouw vernieuwd. Kopieer een vernieuwde APK ook naar `plexport/static/plexport.apk` in de NAS-codemap om de website-download bij te werken. Voor een losse ontwikkelbuild kun je `./gradlew assembleDebug` gebruiken.
+Dit voert de URL-beveiligingschecks en release-lint uit en bouwt een ondertekende release-APK naar `dist/PlexPort-1.1.0.apk`. Het bijbehorende `.apk.sha256`-bestand wordt bij elke bouw vernieuwd. Kopieer een vernieuwde APK ook naar `plexport/static/plexport.apk` in de NAS-codemap om de website-download bij te werken. Voor een losse ontwikkelbuild kun je `./gradlew assembleDebug` gebruiken.
 
 De eerste release-build maakt een eigen ondertekeningssleutel in **`android/.signing/plexport-release.jks`**, met bijbehorende privé-instellingen in **`android/.signing/signing.properties`**. Latere builds gebruiken dezelfde sleutel; ze vervangen of regenereren hem niet. Bewaar de hele `.signing`-map veilig als back-up: Android accepteert updates alleen met dezelfde ondertekening. De map heeft beperkte bestandsrechten en wordt uitgesloten door `.gitignore`. Deel of publiceer deze map niet. Wanneer één van beide bestanden ontbreekt, stopt de bouw om onbedoeld een andere sleutel te voorkomen.
 

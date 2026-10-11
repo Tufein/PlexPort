@@ -1,4 +1,10 @@
-# Wat is nieuw?
+# Wijzigingen
+
+## Android 1.1.0 — 11 oktober 2026
+
+- Een nieuwe ondertekende APK, te installeren als update over de vorige versie. Je opgeslagen NAS-adres blijft behouden.
+- De app laadt de vernieuwde bediening van PlexPort op je NAS, met zoekfilters, downloadstatussen en opslagcontroles.
+- Het bouwscript gebruikt voortaan automatisch het huidige versienummer voor de APK-bestandsnaam.
 
 ## 11 oktober 2026 · Website 1.1
 

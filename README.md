@@ -9,7 +9,7 @@
 Zoek een film of serie, kies een versie en volg de download.
 PlexPort zet de voltooide video's in de juiste mediamap.
 
-[Aan de slag](#aan-de-slag) · [Zo gebruik je het](docs/GEBRUIKEN.md) · [Hulp nodig?](docs/HULP.md) · [Android downloaden](https://github.com/Tufein/PlexPort/raw/refs/heads/main/android/dist/PlexPort-1.0.0.apk)
+[Aan de slag](#aan-de-slag) · [Zo gebruik je het](docs/GEBRUIKEN.md) · [Hulp nodig?](docs/HULP.md) · [Android downloaden](https://github.com/Tufein/PlexPort/raw/refs/heads/main/android/dist/PlexPort-1.1.0.apk)
 
 </div>
 

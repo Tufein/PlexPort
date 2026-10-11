@@ -4,7 +4,7 @@
 
 Een lokale, Nederlandstalige app die je bronnen doorzoekt, torrents naar Transmission of qBittorrent stuurt en voltooide media automatisch in je Plex-mediamappen importeert.
 
-Bovenaan kies je bij **Weergave** tussen Systeem, Licht en Donker. Je keuze blijft per browser bewaard. Voor Android staat een ondertekende APK klaar in [android/dist/PlexPort-1.0.0.apk](../android/dist/PlexPort-1.0.0.apk); je kunt hem ook downloaden via **Instellingen → Android-app downloaden**. De Android-app gebruikt dezelfde NAS, bronnen en downloads. Zie [Android installeren](../android/README.md) en de [roadmap voor betere downloads](../ROADMAP.md).
+Bovenaan kies je bij **Weergave** tussen Systeem, Licht en Donker. Je keuze blijft per browser bewaard. Voor Android staat een ondertekende APK klaar in [android/dist/PlexPort-1.1.0.apk](../android/dist/PlexPort-1.1.0.apk); je kunt hem ook downloaden via **Instellingen → Android-app downloaden**. De Android-app gebruikt dezelfde NAS, bronnen en downloads. Zie [Android installeren](../android/README.md) en de [roadmap voor betere downloads](../ROADMAP.md).
 
 **TrueNAS 25.10 Goldeye:** volg [INSTALLATIE-TRUENAS.md](../INSTALLATIE-TRUENAS.md). `compose.yaml` en `compose.truenas.yaml` zijn voorbeelden voor de Apps-webinterface. Pas het NAS-adres, de datasetpaden en UID/GID aan en vul een eigen PlexPort-wachtwoord in. PlexPort en de qBittorrent-app moeten dezelfde fysieke downloadmap als `/downloads` zien.
 
