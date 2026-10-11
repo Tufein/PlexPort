@@ -1,5 +1,5 @@
 .gradle/
-.signing/
+.signing
 .verification-avd/
 local.properties
 app/build/

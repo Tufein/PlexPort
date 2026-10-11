@@ -16,7 +16,7 @@ android/build/
 android/app/build/
 android/verification/
 android/.gradle/
-.signing/
+.signing
 local.properties
 *.sqlite
 *.sqlite-*
