@@ -1,5 +1,12 @@
 # What's new?
 
+## Movie and TV posters — October 11, 2026
+
+- Posters make titles easier to recognize in the overview, downloads, library and search results. The same images appear in the Android app after the server update.
+- Posters are matched by title and year through WatchSoMuch, with a link to their source. No extra account or API key is needed.
+- Missing, ambiguous or temporarily unavailable images fall back to a film or TV icon. Posters never delay adding a download or importing media.
+- Images are loaded through your PlexPort server and cached with bounded storage. Existing download settings and media folders remain in use.
+
 ## Download controls — October 11, 2026
 
 - **Stoppen (Stop)** stops the torrent and puts the PlexPort task on hold, including automatic importing. **Hervatten (Resume)** continues it later.

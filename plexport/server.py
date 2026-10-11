@@ -9,6 +9,7 @@ import json
 import mimetypes
 import os
 from pathlib import Path
+import re
 import secrets
 import threading
 import time
@@ -17,6 +18,7 @@ import webbrowser
 
 from .core import Store, Worker, defaults, friendly_error, new_job, public_job, public_settings, require_storage, storage_report
 from .integrations import client, plex_scan, plex_sections, search_source
+from .posters import PosterCache
 
 STATIC = Path(__file__).parent / 'static'
 
@@ -24,6 +26,7 @@ STATIC = Path(__file__).parent / 'static'
 def create_server(host, port, store, password=''):
     worker = Worker(store)
     checks = {}
+    posters = PosterCache()
     sessions = {}
     failures = {}
     auth_lock = threading.Lock()
@@ -47,12 +50,12 @@ def create_server(host, port, store, password=''):
             if len(args) > 1 and str(args[1]) != '200':
                 print('PlexPort HTTP', args[1])
 
-        def send(self, value, status=200, content_type='application/json; charset=utf-8', headers=None):
+        def send(self, value, status=200, content_type='application/json; charset=utf-8', headers=None, cache_control='no-store'):
             body = json.dumps(value, ensure_ascii=False).encode() if isinstance(value, (dict, list)) else value
             self.send_response(status)
             self.send_header('Content-Type', content_type)
             self.send_header('Content-Length', str(len(body)))
-            self.send_header('Cache-Control', 'no-store')
+            self.send_header('Cache-Control', cache_control)
             self.send_header('X-Content-Type-Options', 'nosniff')
             self.send_header('Referrer-Policy', 'same-origin')
             self.send_header('Content-Security-Policy', "default-src 'self'; style-src 'self'; script-src 'self'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'")
@@ -153,6 +156,16 @@ def create_server(host, port, store, password=''):
                     self.send({'jobs': jobs, 'checks': checks.copy(), 'configured_sources': len(store.settings()['sources']), 'authentication': self.authentication})
                 elif parsed.path == '/api/settings':
                     self.send(public_settings(store.settings()))
+                elif parsed.path == '/api/artwork':
+                    params = urllib.parse.parse_qs(parsed.query)
+                    self.send(posters.lookup(params.get('title', [''])[0], params.get('year', [''])[0], params.get('kind', ['movie'])[0]))
+                elif parsed.path.startswith('/posters/'):
+                    match = re.fullmatch(r'/posters/([a-f0-9]{64})\.jpg', parsed.path)
+                    body = posters.image(match[1]) if match else None
+                    if body is None:
+                        self.send({'error': 'Niet gevonden.'}, 404)
+                    else:
+                        self.send(body, content_type='image/jpeg', cache_control='private, max-age=600')
                 elif parsed.path == '/api/search':
                     params = urllib.parse.parse_qs(parsed.query)
                     query = params.get('q', [''])[0].strip()
@@ -173,7 +186,7 @@ def create_server(host, port, store, password=''):
                     results.sort(key=lambda r: r['seeders'], reverse=True)
                     self.send({'results': results[:250], 'errors': errors})
                 else:
-                    names = {'/': 'index.html', '/app.js': 'app.js', '/discovery.js': 'discovery.js', '/theme.js': 'theme.js', '/style.css': 'style.css', '/favicon.svg': 'favicon.svg', '/plexport.apk': 'plexport.apk'}
+                    names = {'/': 'index.html', '/app.js': 'app.js', '/artwork.js': 'artwork.js', '/discovery.js': 'discovery.js', '/theme.js': 'theme.js', '/style.css': 'style.css', '/favicon.svg': 'favicon.svg', '/plexport.apk': 'plexport.apk'}
                     filename = names.get(parsed.path)
                     if not filename:
                         self.send({'error': 'Niet gevonden.'}, 404)

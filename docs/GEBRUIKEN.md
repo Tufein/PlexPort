@@ -59,3 +59,9 @@ If the downloader is unavailable, choose **Alleen uit PlexPort (Only from PlexPo
 Movies and shows appear in Plex once it has scanned the media folders and identified the title. With a configured Plex connection, PlexPort requests that scan. Under **Bibliotheek (Library)**, you can also choose **Plex laten scannen (Ask Plex to scan)**, or refresh the library directly in Plex.
 
 Original downloads stay in place for sharing. PlexPort does not automatically delete them.
+
+## Recognize titles by their posters
+
+The overview, downloads, library and search results show posters when WatchSoMuch has an unambiguous title match. Enter the film's release year to distinguish remakes with the same name. A small **Bron (Source)** link identifies each poster's source. If no matching poster is available, a film or TV icon appears instead; downloading and importing continue normally.
+
+Images need Internet access from the PlexPort server. The server sends the title and movie/TV category to WatchSoMuch and caches the returned image, including for downloads from another source. It does not send passwords or torrent links. You do not need a separate account or API key. The Android app displays the same posters after updating the server. Cover images illustrate the title; they do not verify the contents of a torrent.

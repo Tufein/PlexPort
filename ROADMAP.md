@@ -4,7 +4,7 @@
 
 ## Available now
 
-Simple setup guides, connection and folder checks, download version filters, download search, and clearer explanations when a task is waiting. Dark mode, Android, qBittorrent, Transmission and media-folder imports are also available.
+Simple setup guides, connection and folder checks, download version filters, download search, and clearer explanations when a task is waiting. Dark mode, Android, movie and TV posters, qBittorrent, Transmission and media-folder imports are also available.
 
 The GitHub documentation is now in English. The app interface still uses Dutch labels.
 
