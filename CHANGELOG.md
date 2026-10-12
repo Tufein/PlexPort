@@ -1,5 +1,14 @@
 # What's new?
 
+## Website 1.5 — October 12, 2026
+
+- Search with `*` for any number of characters and `?` for one character, for example `Star*`, `Harry*Potter` or `Example 202?`. Ordinary title searches remain supported.
+- Wildcards also work when searching your own downloads. Discover applies them to the limited results returned by your connected sources; broad patterns can miss titles and do not browse the full catalog.
+- Remember quality, maximum size, minimum seeders and sorting with **Voorkeuren onthouden (Remember preferences)**. Choices are saved on your PlexPort server and available on the website and Android.
+- **Mijn voorkeuren toepassen (Apply my preferences)** reloads saved choices. **Alles tonen (Show everything)** temporarily removes filters without changing saved preferences. Source selection remains temporary.
+- Existing databases receive default preferences when read, without replacing connections, credentials, folders or task history. Saving preferences alone keeps existing connection-check results.
+- These controls arrive through a server update; the signed Android APK remains 1.2.0. This entry describes source changes, not confirmation that an existing NAS has been updated.
+
 ## Movie and TV posters — October 11, 2026
 
 - Posters make titles easier to recognize in the overview, downloads, library and search results. The same images appear in the Android app after the server update.

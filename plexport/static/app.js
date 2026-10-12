@@ -66,9 +66,9 @@ function activityNote(activity){
 }
 function renderProgress(){document.querySelectorAll('.progress-track > [data-progress]').forEach(bar=>{bar.style.width=bar.dataset.progress+'%';});}
 function renderDownloads(noJobs=''){
-  const query=$('#download-query').value.trim().toLocaleLowerCase('nl');
+  const query=$('#download-query').value.trim();
   const filter=$('#download-filter').value;
-  const jobs=status.jobs.filter(job=>job.title.toLocaleLowerCase('nl').includes(query)
+  const jobs=status.jobs.filter(job=>PlexPortDiscovery.matches(job.title,query)
     &&(filter==='all'||filter==='active'&&!['done','error','stopped'].includes(job.state)
       ||filter==='stopped'&&job.state==='stopped'||filter==='error'&&job.state==='error'||filter==='done'&&job.files_imported?.length));
   $('#download-count').textContent=`${jobs.length} van ${status.jobs.length} downloads`;
@@ -92,7 +92,30 @@ function renderResults(){
   $('#search-results').innerHTML=`<div class="result-heading">${rows.length} van ${results.length} versies</div>`+(rows.length?rows.map(r=>`<article class="result-row">${artwork(r.library_title||r.title,r.year,searchKind)}<div class="job-body"><div class="result-title">${esc(r.title)}</div><div class="result-meta"><span class="quality-badge">${qualityNames[r.quality]}</span><span>${esc(r.source)}</span><span>${r.size?bytes(r.size):'Grootte onbekend'}</span><span>${Number(r.seeders||0)} delers</span></div></div><button class="primary" data-result="${r.index}">${icon('download')}Kiezen</button></article>`).join(''):empty('search','Geen versie past bij deze keuze.','Probeer een andere kwaliteit of een grotere maximale bestandsgrootte.','<button class="secondary" id="empty-reset">Alle versies tonen</button>'));
   PlexPortArtwork.mount();
 }
-function resetFilters(){for(const [id,value]of [['quality','all'],['size','0'],['seeders','0'],['source','all'],['sort','seeders']])$('#filter-'+id).value=value;if(results.length)renderResults();}
+function applyPreferences(preferences){
+  const values=PlexPortDiscovery.preferences(preferences);
+  for(const [id,value]of [['quality',values.quality],['size',values.max_gb],['seeders',values.min_seeders],['sort',values.sort]])$('#filter-'+id).value=String(value);
+  $('#filter-source').value='all';
+  $('#preference-status').textContent='Je opgeslagen voorkeuren zijn toegepast. Alles tonen is tijdelijk.';
+  if(results.length)renderResults();
+}
+async function savePreferences(){
+  const button=$('#save-preferences');button.disabled=true;
+  try{
+    const preferences={quality:$('#filter-quality').value,max_gb:Number($('#filter-size').value),min_seeders:Number($('#filter-seeders').value),sort:$('#filter-sort').value};
+    const saved=await api('settings',{preferences});settings.preferences=saved.preferences;
+    $('#preference-status').textContent='Opgeslagen op je PlexPort-server. Ook beschikbaar op Android.';
+    toast('Je downloadvoorkeuren zijn opgeslagen.');
+  }catch(error){$('#preference-status').textContent=error.message;toast(error.message,true);}
+  finally{button.disabled=false;}
+}
+async function restorePreferences(){
+  const button=$('#restore-preferences');button.disabled=true;
+  try{const saved=await api('settings');settings.preferences=saved.preferences;applyPreferences(saved.preferences);}
+  catch(error){toast(error.message,true);}
+  finally{button.disabled=false;}
+}
+function resetFilters(){for(const [id,value]of [['quality','all'],['size','0'],['seeders','0'],['source','all'],['sort','seeders']])$('#filter-'+id).value=value;$('#preference-status').textContent='Alle versies zichtbaar. Je opgeslagen voorkeuren blijven behouden.';if(results.length)renderResults();}
 function folderResults(report){
   return report.folders.map(folder=>`<div class="folder-check"><span class="status-pill ${folder.ok?'good':'bad'}">${folder.ok?'✓':'!'}</span><div><b>${esc(folder.label)}</b><small>${esc(folder.message)}${folder.free!==null?' · '+bytes(folder.free)+' vrij':''}</small></div></div>`).join('');
 }
@@ -123,7 +146,7 @@ async function checkAll(){
 }
 hydrate();navigate(location.hash.slice(1),false);
 $('#logout-button').addEventListener('click',async()=>{try{const response=await fetch('/auth/logout',{method:'POST',headers:{'X-PlexPort':'1','Content-Type':'application/json'},body:'{}'});if(!response.ok)throw Error('Afmelden is niet gelukt. Probeer opnieuw.');window.location.replace('/login');}catch(error){toast(error.message,true);}});
-$('#check-all').addEventListener('click',checkAll);$('#reset-filters').addEventListener('click',resetFilters);document.addEventListener('click',event=>{if(event.target.closest('#empty-reset'))resetFilters();});for(const id of ['quality','size','seeders','source','sort'])$('#filter-'+id).addEventListener('change',renderResults);$('#download-query').addEventListener('input',()=>renderDownloads());$('#download-filter').addEventListener('change',()=>renderDownloads());
+$('#save-preferences').addEventListener('click',savePreferences);$('#restore-preferences').addEventListener('click',restorePreferences);$('#check-all').addEventListener('click',checkAll);$('#reset-filters').addEventListener('click',resetFilters);document.addEventListener('click',event=>{if(event.target.closest('#empty-reset'))resetFilters();});for(const id of ['quality','size','seeders','source','sort'])$('#filter-'+id).addEventListener('change',renderResults);$('#download-query').addEventListener('input',()=>renderDownloads());$('#download-filter').addEventListener('change',()=>renderDownloads());
 $('#theme-choice').value=window.PlexPortTheme.preference;
 $('#theme-choice').addEventListener('change',event=>window.PlexPortTheme.set(event.target.value));
 $('#settings-form').elements['downloader.type'].addEventListener('change',downloaderHint);
@@ -136,11 +159,11 @@ $('#search-form').addEventListener('submit',async event=>{
   event.preventDefault();
   const button=$('#search-button');button.disabled=true;
   searchKind=event.target.elements['search-kind'].value;
-  results=[];$('#result-tools').hidden=true;$('#search-errors').innerHTML='';
+  results=[];$('#result-tools').hidden=true;$('#search-errors').innerHTML='';$('#search-note').hidden=true;$('#search-note').textContent='';
   $('#search-results').innerHTML=empty('search','Je bronnen worden doorzocht…','Een bron die niet bereikbaar is, kan wat langer duren.');
   try{
     const response=await api('search?'+new URLSearchParams({q:$('#query').value,kind:searchKind}));
-    results=response.results;
+    results=response.results;$('#search-note').textContent=response.search?.notice||'';$('#search-note').hidden=!response.search?.notice;
     $('#search-errors').innerHTML=response.errors.map(e=>`<div class="warning"><b>${esc(e.source)}</b> · ${esc(e.error)}</div>`).join('');
     $('#filter-source').innerHTML='<option value="all">Alle bronnen</option>'+[...new Set(results.map(r=>r.source))].map(source=>`<option value="${esc(source)}">${esc(source)}</option>`).join('');
     $('#result-tools').hidden=!results.length;
@@ -151,4 +174,4 @@ $('#search-form').addEventListener('submit',async event=>{
 });
 $('#scan-button').addEventListener('click',async event=>{const button=event.currentTarget;button.disabled=true;try{const kinds=[...new Set(status.jobs.filter(j=>j.files_imported?.length).map(j=>j.kind))];if(!kinds.length)throw Error('Er zijn nog geen PlexPort-imports om te scannen.');for(const kind of kinds)await api('scan',{kind});toast('Plex-bibliotheekscan aangevraagd.');}catch(e){toast(e.message,true);}finally{button.disabled=false;}});
 window.addEventListener('hashchange',()=>navigate(location.hash.slice(1),false));
-(async()=>{try{settings=await api('settings');populateSettings();await refresh();}catch(e){toast('PlexPort kon niet worden geladen: '+e.message,true);}setInterval(refresh,4000);})();
+(async()=>{try{settings=await api('settings');populateSettings();applyPreferences(settings.preferences);await refresh();}catch(e){toast('PlexPort kon niet worden geladen: '+e.message,true);}setInterval(refresh,4000);})();

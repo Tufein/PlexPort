@@ -21,6 +21,10 @@ from .integrations import client, http_url, plex_scan
 VIDEO = {'.mkv', '.mp4', '.m4v', '.avi', '.mov', '.ts', '.webm', '.mpg', '.mpeg'}
 SUBTITLE = {'.srt', '.ass', '.ssa', '.vtt', '.sub', '.idx'}
 SECRETS = {'password', 'token', 'api_key'}
+DEFAULT_PREFERENCES = {'quality': 'all', 'max_gb': 0, 'min_seeders': 0, 'sort': 'seeders'}
+PREFERENCE_CHOICES = {'quality': ('all', '1080', '720', '2160', 'sd', 'unknown'),
+                      'max_gb': (0, 2, 4, 10, 25), 'min_seeders': (0, 1, 5, 20),
+                      'sort': ('seeders', 'smallest', 'title')}
 
 
 def download_size(value):
@@ -82,7 +86,8 @@ def defaults():
                            'username': os.environ.get('TRANSMISSION_USER', '') if downloader_type == 'transmission' else os.environ.get('QBITTORRENT_USER', ''), 'password': os.environ.get('TRANSMISSION_PASSWORD', '') if downloader_type == 'transmission' else '',
                            'remote_root': os.environ.get('DOWNLOADER_ROOT', downloads), 'local_root': downloads},
             'library': {'movies': str(media / 'Movies'), 'tv': str(media / 'TV Shows')},
-            'plex': {'url': '', 'token': '', 'movie_section': '', 'tv_section': ''}, 'sources': []}
+            'plex': {'url': '', 'token': '', 'movie_section': '', 'tv_section': ''}, 'sources': [],
+            'preferences': DEFAULT_PREFERENCES.copy()}
 
 
 def public_settings(config):
@@ -102,7 +107,21 @@ def public_settings(config):
 
 
 def merge_settings(previous, incoming):
+    if not isinstance(incoming, dict):
+        raise ValueError('Ongeldige instellingen.')
     result = copy.deepcopy(previous)
+    result['preferences'] = {**DEFAULT_PREFERENCES, **previous.get('preferences', {})}
+    if 'preferences' in incoming:
+        preferences = incoming['preferences']
+        if not isinstance(preferences, dict):
+            raise ValueError('Ongeldige zoekvoorkeuren.')
+        if set(preferences) - set(DEFAULT_PREFERENCES):
+            raise ValueError('Onbekende zoekvoorkeur.')
+        for key, value in preferences.items():
+            expected_type = int if key in ('max_gb', 'min_seeders') else str
+            if type(value) is not expected_type or value not in PREFERENCE_CHOICES[key]:
+                raise ValueError('Ongeldige zoekvoorkeur: ' + key)
+            result['preferences'][key] = value
     for group in ('downloader', 'library', 'plex'):
         for key in previous[group]:
             if key in incoming.get(group, {}):
@@ -178,7 +197,10 @@ class Store:
 
     def settings(self):
         with self.lock, self.connect() as db:
-            return json.loads(db.execute('SELECT body FROM settings WHERE id=1').fetchone()[0])
+            config = json.loads(db.execute('SELECT body FROM settings WHERE id=1').fetchone()[0])
+            # Existing databases gain defaults in memory; reading never changes them.
+            config['preferences'] = {**DEFAULT_PREFERENCES, **config.get('preferences', {})}
+            return config
 
     def save_settings(self, incoming):
         with self.lock, self.connect() as db:

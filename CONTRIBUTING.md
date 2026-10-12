@@ -12,7 +12,7 @@ Run these from the project folder:
 
 ```sh
 python3 -m unittest discover -s tests -v
-node --test tests/test_discovery.cjs
+node --test tests/*.cjs
 node --check plexport/static/app.js
 ```
 

@@ -18,6 +18,18 @@ The checklist on **Overzicht (Overview)** shows what still needs setting up. Add
 4. Use the minimum sharing count to find versions with people currently sharing them. More seeders may help, but do not guarantee speed.
 5. Click **Kiezen (Choose)** beside the version you want.
 
+## Search with part of a title
+
+Use `*` for zero or more characters, or `?` for one character. Examples: `Star*`, `Harry*Potter`, or `Star?Wars`. Matching ignores capitalization and common release separators such as dots and underscores. Use at least two letters or digits in one literal part of a source query; `*` alone is too broad. The same patterns work under **Zoek in je downloads (Search your downloads)**.
+
+PlexPort sends a useful text part to your sources, then checks their returned titles against your pattern. It searches the results those sources return, rather than their entire catalogs. A broad query can miss titles because sources limit results; add more of the title if needed. Ordinary title searches keep their existing behavior.
+
+## Remember your download choices
+
+After a search, choose your **Beeldkwaliteit (Quality)**, **Maximale grootte (Maximum size)**, **Mensen die delen (Seeders)** and **Volgorde (Order)**, then click **Voorkeuren onthouden (Remember preferences)**. These choices are saved on your PlexPort server. Opening the website or Android app again loads the same preferences; **Mijn voorkeuren toepassen (Apply my preferences)** also retrieves the latest saved choices.
+
+**Alles tonen (Show everything)** temporarily removes the filters without erasing your preferences. You still choose the download yourself. The source filter and search text are not saved. Changes to the other connection settings, running downloads and media folders are not required.
+
 ## Check before starting
 
 Check the title and year. For a single TV episode, you can enter the season and episode. A season pack needs episode codes such as `S01E01` in its filenames.

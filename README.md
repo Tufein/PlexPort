@@ -56,7 +56,7 @@ Choose the option that matches your setup:
 ## Your first download in three steps
 
 1. **Set up:** open **Instellingen (Settings)**, enter your downloader and folders, then click **Alles controleren (Check everything)**. Add a search source if you want to search inside the app.
-2. **Choose:** open **Ontdekken (Discover)**, search for a title and use the filters to find a suitable version. Click **Kiezen (Choose)** and check the title and destination.
+2. **Choose:** open **Ontdekken (Discover)**, search for a title (or a pattern such as `Harry*Potter`) and use the filters to find a suitable version. **Voorkeuren onthouden (Remember preferences)** saves your quality and size choices for the website and Android. Click **Kiezen (Choose)** and check the title and destination.
 3. **Follow:** click **Download starten (Start download)**. Track progress under **Downloads**, with posters to recognize your titles. Once the video has been placed, the task appears under **Bibliotheek (Library)**.
 
 You can also use **Download toevoegen (Add download)** for your own link or torrent file. Only download and share media you have permission to use.

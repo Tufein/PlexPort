@@ -19,6 +19,7 @@ import webbrowser
 from .core import Store, Worker, defaults, friendly_error, new_job, public_job, public_settings, require_storage, storage_report
 from .integrations import client, plex_scan, plex_sections, search_source
 from .posters import PosterCache
+from .search import prepare_query, filter_results
 
 STATIC = Path(__file__).parent / 'static'
 
@@ -172,19 +173,22 @@ def create_server(host, port, store, password=''):
                     kind = params.get('kind', ['movie'])[0]
                     if len(query) < 2 or len(query) > 200 or kind not in ('movie', 'tv'):
                         raise ValueError('Vul minimaal twee tekens in en kies film of serie.')
+                    prepared = prepare_query(query)
                     sources = store.settings()['sources']
                     if not sources:
                         raise ValueError('Voeg eerst een bron toe bij Instellingen, zoals WatchSoMuch of een Torznab-feed.')
                     results, errors = [], []
                     with ThreadPoolExecutor(max_workers=5) as pool:
-                        futures = {pool.submit(search_source, source, query, kind): source for source in sources}
+                        futures = {pool.submit(search_source, source, prepared['term'], kind): source for source in sources}
                         for future in as_completed(futures):
                             try:
                                 results.extend(future.result())
                             except Exception as e:
                                 errors.append({'source': futures[future]['name'], 'error': friendly_error(e)})
+                    results = filter_results(results, prepared)
                     results.sort(key=lambda r: r['seeders'], reverse=True)
-                    self.send({'results': results[:250], 'errors': errors})
+                    notice = 'Wildcards worden toegepast op de versies die je bronnen teruggeven. Een brede zoekopdracht kan titels missen; gebruik dan meer letters.' if prepared['wildcard'] else ''
+                    self.send({'results': results[:250], 'errors': errors, 'search': {'wildcard': prepared['wildcard'], 'notice': notice}})
                 else:
                     names = {'/': 'index.html', '/app.js': 'app.js', '/artwork.js': 'artwork.js', '/discovery.js': 'discovery.js', '/theme.js': 'theme.js', '/style.css': 'style.css', '/favicon.svg': 'favicon.svg', '/plexport.apk': 'plexport.apk'}
                     filename = names.get(parsed.path)
@@ -242,7 +246,8 @@ def create_server(host, port, store, password=''):
                 elif self.path == '/api/settings':
                     with worker.lock:
                         result = store.save_settings(data)
-                        checks.clear()
+                        if set(data) != {'preferences'}:
+                            checks.clear()
                     self.send(result)
                 elif self.path == '/api/jobs':
                     with worker.lock:
