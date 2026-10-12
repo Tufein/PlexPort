@@ -1,12 +1,16 @@
 """WatchSoMuch's public RSS search and download pages; no account is needed."""
 from html.parser import HTMLParser
+import html
 import re
 import threading
+import unicodedata
 import time
 import urllib.parse
 import xml.etree.ElementTree as ET
 
 from .integrations import request
+
+ACTOR_TITLES = 8  # Actor searches look at a few more titles than title searches.
 
 BASE = 'https://watchsomuch.to'
 _cache = {}
@@ -83,9 +87,22 @@ def size_bytes(text):
     return int(float(match[1].replace(',', '.')) * 1024 ** ('B', 'KB', 'MB', 'GB', 'TB').index(match[2].upper())) if match else 0
 
 
-def search(source, query, kind):
-    # Bound requests to five title lists; resolve only the selected download later.
-    key = (query.casefold(), kind)
+def _name(value):
+    value = unicodedata.normalize('NFKD', value)
+    value = ''.join(char for char in value if not unicodedata.combining(char))
+    return ' '.join(''.join(char if char.isalnum() else ' ' for char in value.casefold()).split())
+
+
+def cast_of(description):
+    """Names after "Starring:" in a feed item; empty when the feed lists none."""
+    match = re.search(r'Starring:\s*([^<]*)', html.unescape(description or ''))
+    return [name.strip() for name in match[1].split(',') if name.strip()] if match else []
+
+
+def search(source, query, kind, mode='title'):
+    # Bound requests to a few title lists; resolve only the selected download later.
+    actor = mode == 'actor'
+    key = (query.casefold(), kind, mode)
     with _lock:
         cached = _cache.get(key)
         if cached and time.monotonic() - cached[0] < 300:
@@ -98,7 +115,14 @@ def search(source, query, kind):
     if root.tag != 'rss':
         raise ValueError('WatchSoMuch geeft geen geldige zoekfeed terug.')
     results, seen, failures = [], set(), []
-    titles = root.findall('./channel/item')[:5]
+    titles = root.findall('./channel/item')
+    if actor:
+        # The feed also matches words in titles; keep films where this person is credited.
+        wanted = _name(query)
+        titles = [item for item in titles if any(wanted in _name(name) for name in cast_of(item.findtext('description', '')))]
+        titles = titles[:ACTOR_TITLES]
+    else:
+        titles = titles[:5]
     for item in titles:
         parsed = urllib.parse.urlsplit(item.findtext('link', ''))
         if parsed.scheme != 'https' or parsed.hostname not in ('watchsomuch.to', 'www.watchsomuch.to'):
@@ -127,7 +151,7 @@ def search(source, query, kind):
             episode = re.search(r'\bS(\d{1,3})E(\d{1,3})\b', torrent['title'], re.I) if kind == 'tv' else None
             results.append({**torrent, 'size': size_bytes(torrent['size']), 'seeders': int(seeds) if seeds.isdigit() else 0,
                             'source': source['name'], 'published': item.findtext('pubDate', ''),
-                            'library_title': library_title, 'year': year,
+                            'library_title': library_title, 'year': year, 'cast': ', '.join(cast_of(item.findtext('description', ''))[:4]),
                             'season': episode[1] if episode else '', 'episode': episode[2] if episode else ''})
     if failures and not results:
         raise ValueError('De downloadlijst van WatchSoMuch is tijdelijk niet bereikbaar. Probeer opnieuw.')

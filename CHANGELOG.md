@@ -1,5 +1,11 @@
 # What's new?
 
+## Search by actor — Unreleased
+
+- Choose **Op acteur (By actor)** in **Ontdekken (Discover)** and type a name such as `Tom Hanks`. PlexPort asks your WatchSoMuch source and keeps films that credit that person in their cast list, so title matches with other people are left out.
+- Results show the first names of the cast. Actor search uses WatchSoMuch only, returns at most the first eight matching titles, and does not use `*` or `?`. Other sources are skipped.
+- This arrives through a server update; the Android APK remains 1.2.0.
+
 ## Website 1.5 — October 12, 2026
 
 - Search with `*` for any number of characters and `?` for one character, for example `Star*`, `Harry*Potter` or `Example 202?`. Ordinary title searches remain supported.
