@@ -10,7 +10,7 @@ Your phone controls **the same PlexPort server** running on your NAS or computer
 4. Open PlexPort and enter your **PlexPort address**, for example `http://192.168.1.100:8765/`. Use your own NAS address. You can change it later through the app menu.
 5. Sign in as **admin** with your **PlexPort password**, not your TrueNAS or qBittorrent password.
 
-Android **8 or newer** is required. Outside your home network, you need a VPN or a correctly configured secure server connection. The app does not set this up automatically.
+Android **8 or newer** is required. To use PlexPort outside your home network, follow [Use PlexPort away from home with Tailscale](START-REMOTE.md). The app does not set this up automatically.
 
 Search filters and download controls come directly from your server, so server updates also appear on your phone. The current interface uses Dutch labels; the [usage guide](GEBRUIKEN.md) explains them in English.
 

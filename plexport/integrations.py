@@ -255,10 +255,10 @@ def re_section(value):
     return isinstance(value, str) and value.isdigit()
 
 
-def search_source(source, query, kind):
+def search_source(source, query, kind, mode='title'):
     if source.get('type') == 'watchsomuch':
         from .watchsomuch import search
-        return search(source, query, kind)
+        return search(source, query, kind, mode)
     parsed = urllib.parse.urlsplit(http_url(source['url']))
     params = dict(urllib.parse.parse_qsl(parsed.query))
     params.update({'t': 'search', 'q': query, 'apikey': source.get('api_key', ''), 'cat': '2000' if kind == 'movie' else '5000', 'limit': '50'})

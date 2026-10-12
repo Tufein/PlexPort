@@ -89,7 +89,7 @@ function renderSetup(){
 function renderResults(){
   const rows=PlexPortDiscovery.select(results,{quality:$('#filter-quality').value,maxGB:$('#filter-size').value,minSeeders:$('#filter-seeders').value,source:$('#filter-source').value,sort:$('#filter-sort').value});
   const qualityNames={'1080':'Full HD','720':'HD','2160':'4K','sd':'Standaardbeeld','unknown':'Kwaliteit niet vermeld'};
-  $('#search-results').innerHTML=`<div class="result-heading">${rows.length} van ${results.length} versies</div>`+(rows.length?rows.map(r=>`<article class="result-row">${artwork(r.library_title||r.title,r.year,searchKind)}<div class="job-body"><div class="result-title">${esc(r.title)}</div><div class="result-meta"><span class="quality-badge">${qualityNames[r.quality]}</span><span>${esc(r.source)}</span><span>${r.size?bytes(r.size):'Grootte onbekend'}</span><span>${Number(r.seeders||0)} delers</span></div></div><button class="primary" data-result="${r.index}">${icon('download')}Kiezen</button></article>`).join(''):empty('search','Geen versie past bij deze keuze.','Probeer een andere kwaliteit of een grotere maximale bestandsgrootte.','<button class="secondary" id="empty-reset">Alle versies tonen</button>'));
+  $('#search-results').innerHTML=`<div class="result-heading">${rows.length} van ${results.length} versies</div>`+(rows.length?rows.map(r=>`<article class="result-row">${artwork(r.library_title||r.title,r.year,searchKind)}<div class="job-body"><div class="result-title">${esc(r.title)}</div><div class="result-meta"><span class="quality-badge">${qualityNames[r.quality]}</span><span>${esc(r.source)}</span><span>${r.size?bytes(r.size):'Grootte onbekend'}</span><span>${Number(r.seeders||0)} delers</span>${r.cast?`<span>Met ${esc(r.cast)}</span>`:''}</div></div><button class="primary" data-result="${r.index}">${icon('download')}Kiezen</button></article>`).join(''):empty('search','Geen versie past bij deze keuze.','Probeer een andere kwaliteit of een grotere maximale bestandsgrootte.','<button class="secondary" id="empty-reset">Alle versies tonen</button>'));
   PlexPortArtwork.mount();
 }
 function applyPreferences(preferences){
@@ -158,11 +158,11 @@ $('#add-form').addEventListener('submit',async event=>{event.preventDefault();co
 $('#search-form').addEventListener('submit',async event=>{
   event.preventDefault();
   const button=$('#search-button');button.disabled=true;
-  searchKind=event.target.elements['search-kind'].value;
+  searchKind=event.target.elements['search-kind'].value;const searchMode=event.target.elements['search-mode'].value;
   results=[];$('#result-tools').hidden=true;$('#search-errors').innerHTML='';$('#search-note').hidden=true;$('#search-note').textContent='';
   $('#search-results').innerHTML=empty('search','Je bronnen worden doorzocht…','Een bron die niet bereikbaar is, kan wat langer duren.');
   try{
-    const response=await api('search?'+new URLSearchParams({q:$('#query').value,kind:searchKind}));
+    const response=await api('search?'+new URLSearchParams({q:$('#query').value,kind:searchKind,mode:searchMode}));
     results=response.results;$('#search-note').textContent=response.search?.notice||'';$('#search-note').hidden=!response.search?.notice;
     $('#search-errors').innerHTML=response.errors.map(e=>`<div class="warning"><b>${esc(e.source)}</b> · ${esc(e.error)}</div>`).join('');
     $('#filter-source').innerHTML='<option value="all">Alle bronnen</option>'+[...new Set(results.map(r=>r.source))].map(source=>`<option value="${esc(source)}">${esc(source)}</option>`).join('');
@@ -175,3 +175,5 @@ $('#search-form').addEventListener('submit',async event=>{
 $('#scan-button').addEventListener('click',async event=>{const button=event.currentTarget;button.disabled=true;try{const kinds=[...new Set(status.jobs.filter(j=>j.files_imported?.length).map(j=>j.kind))];if(!kinds.length)throw Error('Er zijn nog geen PlexPort-imports om te scannen.');for(const kind of kinds)await api('scan',{kind});toast('Plex-bibliotheekscan aangevraagd.');}catch(e){toast(e.message,true);}finally{button.disabled=false;}});
 window.addEventListener('hashchange',()=>navigate(location.hash.slice(1),false));
 (async()=>{try{settings=await api('settings');populateSettings();applyPreferences(settings.preferences);await refresh();}catch(e){toast('PlexPort kon niet worden geladen: '+e.message,true);}setInterval(refresh,4000);})();
+
+document.querySelectorAll('input[name="search-mode"]').forEach(input=>input.addEventListener('change',()=>{$('#query').placeholder=input.value==='actor'?'Naam van een acteur of actrice, bijvoorbeeld Tom Hanks':'Film of serie, bijvoorbeeld Star*';}));

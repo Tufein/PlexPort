@@ -86,6 +86,28 @@ class SearchAndPreferencesHTTPTests(unittest.TestCase):
         self.assertTrue(body['search']['notice'])
         self.assertEqual(matches, before)
 
+    def test_actor_search_only_asks_watchsomuch_sources(self):
+        self.config['sources'].append({'id': 'w', 'name': 'WatchSoMuch', 'type': 'watchsomuch', 'url': 'https://watchsomuch.to'})
+        self.store.save_settings(self.config)
+        row = {'title': 'Big 1080p', 'source': 'WatchSoMuch', 'seeders': 5, 'link': 'x', 'cast': 'Tom Hanks'}
+        with patch('plexport.server.search_source', return_value=[row]) as fetch:
+            status, body = self.call('/api/search?' + urllib.parse.urlencode({'q': 'Tom Hanks', 'kind': 'movie', 'mode': 'actor'}))
+        self.assertEqual(status, 200)
+        self.assertEqual(fetch.call_count, 1)
+        self.assertEqual(fetch.call_args.args[0]['id'], 'w')
+        self.assertEqual(fetch.call_args.args[3], 'actor')
+        self.assertEqual(body['results'], [row])
+        for query, mode in (('Tom*', 'actor'), ('Tom Hanks', 'other')):
+            status, body = self.call('/api/search?' + urllib.parse.urlencode({'q': query, 'kind': 'movie', 'mode': mode}))
+            self.assertEqual(status, 400)
+
+    def test_actor_search_needs_a_watchsomuch_source(self):
+        with patch('plexport.server.search_source') as fetch:
+            status, body = self.call('/api/search?' + urllib.parse.urlencode({'q': 'Tom Hanks', 'kind': 'movie', 'mode': 'actor'}))
+        self.assertEqual(status, 400)
+        self.assertIn('WatchSoMuch', body['error'])
+        fetch.assert_not_called()
+
     def test_wildcard_filter_is_applied_before_global_result_limit(self):
         excluded = [{'title': 'Unrelated movie', 'seeders': 1000 + i, 'link': 'magnet:unrelated'} for i in range(300)]
         selected = {'title': 'Harry Potter', 'seeders': 1, 'link': 'magnet:chosen'}

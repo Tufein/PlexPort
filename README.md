@@ -49,6 +49,7 @@ Choose the option that matches your setup:
 | **TrueNAS 25.10** | [Install on TrueNAS](docs/START-TRUENAS.md) |
 | **Another NAS or a computer with Docker** | [Install on another NAS](INSTALLATIE-NAS.md) |
 | **My Mac** | [Start on a Mac](docs/START-MAC.md) |
+| **Away from home (any device)** | [Use Tailscale](docs/START-REMOTE.md) — PlexPort must already be running |
 | **My Android phone** | [Install Android app](docs/START-ANDROID.md) — PlexPort must already be running on your NAS or computer |
 
 [Download the app files as a ZIP](https://github.com/Tufein/PlexPort/archive/refs/heads/main.zip) and extract them first. **PlexPort is not yet a one-click app in the TrueNAS app catalog.** Initial setup needs your server address and folder settings; the TrueNAS guide walks you through them.

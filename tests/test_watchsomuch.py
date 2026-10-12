@@ -51,6 +51,34 @@ class WatchSoMuchTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, 'zoekfeed'):
                 wsm.search({'name':'Source'}, 'Other', 'movie')
 
+    def test_actor_search_keeps_only_credited_films_and_bounds_requests(self):
+        def item(title, mid, cast):
+            return ('<item><title>%s</title><link>https://watchsomuch.to/Movie/%s-HQ/X</link>'
+                    '<description>&lt;br /&gt;Starring: %s&lt;br /&gt;&lt;p&gt;Plot&lt;/p&gt;</description></item>' % (title, mid, cast))
+        feed = '<rss><channel>' + item('Big(1988)', 123, 'Tom Hanks, Elizabeth Perkins') \
+            + item('Tom Hanks: The Nomad(2023)', 124, 'Josie Ellis') \
+            + item('Elvis(2022)', 125, 'Austin Butler, T\u00f4m Hanks') + '</channel></rss>'
+        rows = ROWS.replace('/Movie/123-', '/Movie/%s-')
+        calls = []
+
+        def fetch(path):
+            calls.append(path)
+            if path.startswith('/RSS/'):
+                return feed
+            mid = path.rsplit('mid=', 1)[1]
+            return rows % (mid, mid)
+
+        with patch('plexport.watchsomuch.fetch', side_effect=fetch):
+            result = wsm.search({'name': 'Source'}, 'tom hanks', 'movie', 'actor')
+        self.assertEqual({r['library_title'] for r in result}, {'Big', 'Elvis'})
+        self.assertEqual(result[0]['cast'].split(', ')[0].casefold() in ('tom hanks', 't\u00f4m hanks'), True)
+        self.assertEqual(len(calls), 3)  # one feed plus the two credited films
+        # Actor results are cached separately from title results.
+        with patch('plexport.watchsomuch.fetch', side_effect=[RSS, ROWS]):
+            self.assertEqual(wsm.search({'name': 'Source'}, 'tom hanks', 'movie')[0]['library_title'], 'Example')
+        self.assertEqual(wsm.cast_of('<br />Starring: A B, C D<br />'), ['A B', 'C D'])
+        self.assertEqual(wsm.cast_of('no cast'), [])
+
     def test_resolve_uses_selected_magnet_and_fails_closed(self):
         html = '<a href="magnet:?xt=urn:btih:' + 'b'*40 + '">Related</a><input id="txtMagnetLink" value="' + MAGNET.replace('&', '&amp;') + '">'
         with patch('plexport.watchsomuch.fetch', return_value=html) as fetch:

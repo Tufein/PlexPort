@@ -173,13 +173,22 @@ def create_server(host, port, store, password=''):
                     kind = params.get('kind', ['movie'])[0]
                     if len(query) < 2 or len(query) > 200 or kind not in ('movie', 'tv'):
                         raise ValueError('Vul minimaal twee tekens in en kies film of serie.')
+                    mode = params.get('mode', ['title'])[0]
+                    if mode not in ('title', 'actor'):
+                        raise ValueError('Kies zoeken op titel of op acteur.')
+                    if mode == 'actor' and ('*' in query or '?' in query):
+                        raise ValueError('Gebruik bij zoeken op acteurs geen * of ?. Typ de naam, bijvoorbeeld Tom Hanks.')
                     prepared = prepare_query(query)
                     sources = store.settings()['sources']
                     if not sources:
                         raise ValueError('Voeg eerst een bron toe bij Instellingen, zoals WatchSoMuch of een Torznab-feed.')
+                    if mode == 'actor':
+                        sources = [source for source in sources if source.get('type') == 'watchsomuch']
+                        if not sources:
+                            raise ValueError('Zoeken op acteurs werkt met de WatchSoMuch-bron. Voeg die toe bij Instellingen.')
                     results, errors = [], []
                     with ThreadPoolExecutor(max_workers=5) as pool:
-                        futures = {pool.submit(search_source, source, prepared['term'], kind): source for source in sources}
+                        futures = {pool.submit(search_source, source, prepared['term'], kind, *(('actor',) if mode == 'actor' else ())): source for source in sources}
                         for future in as_completed(futures):
                             try:
                                 results.extend(future.result())
@@ -187,7 +196,10 @@ def create_server(host, port, store, password=''):
                                 errors.append({'source': futures[future]['name'], 'error': friendly_error(e)})
                     results = filter_results(results, prepared)
                     results.sort(key=lambda r: r['seeders'], reverse=True)
-                    notice = 'Wildcards worden toegepast op de versies die je bronnen teruggeven. Een brede zoekopdracht kan titels missen; gebruik dan meer letters.' if prepared['wildcard'] else ''
+                    if mode == 'actor':
+                        notice = 'Gezocht op acteur in WatchSoMuch. Je ziet films waarin de naam bij de hoofdrollen staat; de bron geeft een beperkt aantal titels terug.'
+                    else:
+                        notice = 'Wildcards worden toegepast op de versies die je bronnen teruggeven. Een brede zoekopdracht kan titels missen; gebruik dan meer letters.' if prepared['wildcard'] else ''
                     self.send({'results': results[:250], 'errors': errors, 'search': {'wildcard': prepared['wildcard'], 'notice': notice}})
                 else:
                     names = {'/': 'index.html', '/app.js': 'app.js', '/artwork.js': 'artwork.js', '/discovery.js': 'discovery.js', '/theme.js': 'theme.js', '/style.css': 'style.css', '/favicon.svg': 'favicon.svg', '/plexport.apk': 'plexport.apk'}

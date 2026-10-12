@@ -77,3 +77,7 @@ Original downloads stay in place for sharing. PlexPort does not automatically de
 The overview, downloads, library and search results show posters when WatchSoMuch has an unambiguous title match. Enter the film's release year to distinguish remakes with the same name. A small **Bron (Source)** link identifies each poster's source. If no matching poster is available, a film or TV icon appears instead; downloading and importing continue normally.
 
 Images need Internet access from the PlexPort server. The server sends the title and movie/TV category to WatchSoMuch and caches the returned image, including for downloads from another source. It does not send passwords or torrent links. You do not need a separate account or API key. The Android app displays the same posters after updating the server. Cover images illustrate the title; they do not verify the contents of a torrent.
+
+## Searching by actor
+
+In **Ontdekken (Discover)**, choose **Op acteur (By actor)** and enter a name, for example `Tom Hanks`. PlexPort shows films whose cast list includes that name, with the first cast members next to each version. This needs a WatchSoMuch source under **Instellingen (Settings)**. It shows at most the first eight matching titles that WatchSoMuch returns, so a very long filmography can be incomplete; add a year or search by title for a specific film.
