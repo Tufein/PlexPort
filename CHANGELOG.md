@@ -1,5 +1,10 @@
 # What's new?
 
+## Use PlexPort away from home — Unreleased
+
+- A new [Tailscale guide](docs/START-REMOTE.md) explains how to reach PlexPort from your phone or another computer without opening router ports. No server or Android update is needed.
+- The guide has not yet been tested on a real NAS or phone.
+
 ## Search by actor — Unreleased
 
 - Choose **Op acteur (By actor)** in **Ontdekken (Discover)** and type a name such as `Tom Hanks`. PlexPort asks your WatchSoMuch source and keeps films that credit that person in their cast list, so title matches with other people are left out.
