@@ -20,9 +20,9 @@ The checklist on **Overzicht (Overview)** shows what still needs setting up. Add
 
 ## Search with part of a title
 
-Use `*` for zero or more characters, or `?` for one character. Examples: `Star*`, `Harry*Potter`, or `Star?Wars`. Matching ignores capitalization and common release separators such as dots and underscores. Use at least two letters or digits in one literal part of a source query; `*` alone is too broad. The same patterns work under **Zoek in je downloads (Search your downloads)**.
+Use `*` for zero or more characters, or `?` for one character. Examples: `Star*`, `*Nosferatu*`, or `Star?Wars`. Matching ignores capitalization and common release separators such as dots and underscores. Use at least two letters or digits in one literal part of a source query; `*` alone is too broad. The same patterns work under **Zoek in je downloads (Search your downloads)**.
 
-PlexPort sends a useful text part to your sources, then checks their returned titles against your pattern. It searches the results those sources return, rather than their entire catalogs. A broad query can miss titles because sources limit results; add more of the title if needed. Ordinary title searches keep their existing behavior.
+PlexPort sends a useful text part to your sources, then checks their returned titles against your pattern. It searches the results those sources return, rather than their entire catalogs. A broad query can miss titles because sources limit results; add more of the title if needed. Ordinary title searches keep their existing behavior. WatchSoMuch searches free words from a word beginning and can interpret some names as actor filters. A fragment from the middle of a word may therefore return nothing. Start with a recognizable word or the beginning of a title when a broad pattern finds no matches.
 
 ## Remember your download choices
 

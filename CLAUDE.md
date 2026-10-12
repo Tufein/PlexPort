@@ -56,3 +56,6 @@ node --check plexport/static/app.js
 Use temporary folders and local fixtures. Check affected website flows on desktop and a narrow mobile viewport, including dark mode, errors and cancellations. These tests do not establish a real NAS-to-Plex download or a physical Android flow; record what was actually exercised. See [Android verification](android/VALIDATIE.md) before claiming native coverage.
 
 For local development, `python3 -m plexport --open` starts the app. Use isolated data and media paths when experimenting; do not connect a test worker to the owner's production data or downloads.
+
+WatchSoMuch's RSS query parser also affects recall: free words search from word beginnings, and some names are interpreted as actor filters. Local wildcard matching cannot recover items the provider did not return. Live read-only checks passed with `Star*` (92 versions) and `Nosferatu*` (87 versions); fragments from the middle of a word can return no items. Do not advertise exhaustive wildcard searching across a provider catalog.
+
