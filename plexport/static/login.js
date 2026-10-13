@@ -26,7 +26,12 @@ form.addEventListener('submit', async event => {
     const body = await response.json();
     if (!response.ok) throw new Error(body.error || 'Aanmelden lukt nu niet. Probeer opnieuw.');
     password.value = '';
-    window.location.replace('/' + window.location.hash);
+    const destination = '/' + window.location.hash;
+    if (window.location.href === new URL(destination, window.location.href).href) {
+      window.location.reload();
+    } else {
+      window.location.replace(destination);
+    }
   } catch (exception) {
     error.textContent = exception.message === 'Failed to fetch' ? 'Je server is niet bereikbaar. Controleer je verbinding en probeer opnieuw.' : exception.message;
     error.hidden = false;

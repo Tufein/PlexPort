@@ -146,6 +146,46 @@ class DownloadControlsTests(unittest.TestCase):
             self.assertEqual(config['url'], self.config['downloader']['url'])
             get_client.return_value.remove.assert_called_once_with('a'*40, False, self.job['remote_dir'])
 
+    def test_processing_and_pause_resume_share_credential_policy_and_keep_original_paths(self):
+        original = copy.deepcopy(self.job['config']['downloader'])
+        new_root = self.root/'new-downloads'
+        new_root.mkdir()
+        self.store.save_settings({'downloader': {'url': original['url']+'/', 'username': 'new-user',
+                                               'password': 'new-pass', 'local_root': str(new_root),
+                                               'remote_root': '/new-downloads'}})
+        downloader = Mock()
+        downloader.add.return_value = 'a'*40
+        downloader.status.return_value = {'progress': .4, 'speed': 123, 'eta': 10,
+                                          'paused': False, 'complete': False, 'activity': 'downloading'}
+        with patch('plexport.core.client', return_value=downloader) as get_client:
+            self.worker.tick()
+            self.worker.tick()
+            self.worker.action(self.job['id'], 'pause')
+            self.worker.action(self.job['id'], 'resume')
+        self.assertEqual(get_client.call_count, 4)
+        for call in get_client.call_args_list:
+            config = call.args[0]
+            self.assertEqual(config, {**original, 'username': 'new-user', 'password': 'new-pass'})
+        saved = self.store.job(self.job['id'])
+        self.assertEqual(saved['local_dir'], self.job['local_dir'])
+        self.assertEqual(saved['remote_dir'], self.job['remote_dir'])
+        self.assertEqual(saved['config']['downloader'], original)
+        self.assertEqual(saved['progress'], .4)
+
+    def test_downloader_type_change_does_not_supply_other_clients_credentials(self):
+        self.submitted()
+        self.store.save_settings({'downloader': {'type': 'transmission', 'username': 'other-user',
+                                               'password': 'other-password'}})
+        downloader = Mock()
+        downloader.status.return_value = {'progress': .4, 'speed': 123, 'eta': 10,
+                                          'paused': False, 'complete': False}
+        with patch('plexport.core.client', return_value=downloader) as get_client:
+            self.worker.tick()
+            self.worker.action(self.job['id'], 'pause')
+            self.worker.action(self.job['id'], 'stop')
+        for call in get_client.call_args_list:
+            self.assertEqual(call.args[0], self.job['config']['downloader'])
+
     def test_tick_snapshot_does_not_resurrect_deleted_task_or_crash(self):
         snapshot = copy.deepcopy(self.store.jobs())
         self.store.delete_job(self.job['id'])

@@ -48,7 +48,7 @@ class BrowserLoginTests(unittest.TestCase):
         self.assertEqual(code, 200)
         self.assertIn(b'login-form', body)
         self.assertNotIn('WWW-Authenticate', dict(headers))
-        for path in ['/api/settings', '/api/status', '/plexport.apk', '/app.js']:
+        for path in ['/api/settings', '/api/status', '/plexport.apk', '/app.js', '/jobs.js']:
             code, headers, _ = self.call(path, headers={'X-PlexPort': '1'})
             self.assertEqual(code, 401)
             self.assertNotIn('WWW-Authenticate', dict(headers))

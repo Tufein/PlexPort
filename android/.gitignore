@@ -7,3 +7,4 @@ app/build/
 *.keystore
 __pycache__/
 verification/.fixture-*
+dist/personal/

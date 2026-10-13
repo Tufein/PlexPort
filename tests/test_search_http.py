@@ -60,6 +60,50 @@ class SearchAndPreferencesHTTPTests(unittest.TestCase):
     def search(self, query, kind='movie', **kwargs):
         return self.call('/api/search?' + urllib.parse.urlencode({'q': query, 'kind': kind}), **kwargs)
 
+    def connection_checks(self):
+        for path in [self.config['downloader']['local_root'], *self.config['library'].values()]:
+            Path(path).mkdir(exist_ok=True)
+        downloader = Mock()
+        downloader.test.return_value = 'Downloader bereikbaar'
+        with patch('plexport.server.client', return_value=downloader), patch('plexport.server.plex_sections', return_value=[]):
+            for target in ('downloader', 'plex', 'storage'):
+                self.assertEqual(self.call('/api/test', {'target': target})[0], 200)
+        return self.call('/api/status')[1]['checks']
+
+    def test_unchanged_full_settings_save_keeps_all_connection_checks(self):
+        checks = self.connection_checks()
+        previous = self.store.settings()
+        public = self.call('/api/settings')[1]
+        self.assertEqual(self.call('/api/settings', public)[0], 200)
+        self.assertEqual(self.call('/api/status')[1]['checks'], checks)
+        self.assertEqual(self.store.settings(), previous)
+
+    def test_settings_changes_invalidate_only_the_affected_connection_checks(self):
+        changes = [
+            ({'downloader': {'password': 'changed-secret'}}, {'downloader'}),
+            ({'downloader': {'url': 'http://another.invalid:8080'}}, {'downloader'}),
+            ({'downloader': {'remote_root': '/new-downloads'}}, {'downloader'}),
+            ({'downloader': {'local_root': str(self.root/'new-downloads')}}, {'downloader', 'storage'}),
+            ({'library': {'movies': str(self.root/'new-movies')}}, {'storage'}),
+            ({'plex': {'token': 'changed-token'}}, {'plex'}),
+            ({'sources': [{'id': 'w', 'name': 'WatchSoMuch', 'type': 'watchsomuch'}]}, set()),
+            ({'preferences': {'quality': '1080'}}, set()),
+        ]
+        for incoming, invalidated in changes:
+            with self.subTest(incoming=incoming):
+                self.assertEqual(self.call('/api/settings', self.config)[0], 200)
+                checks = self.connection_checks()
+                self.assertEqual(self.call('/api/settings', incoming)[0], 200)
+                self.assertEqual(self.call('/api/status')[1]['checks'],
+                                 {key: value for key, value in checks.items() if key not in invalidated})
+
+    def test_rejected_settings_save_preserves_connection_checks(self):
+        checks = self.connection_checks()
+        previous = self.store.settings()
+        self.assertEqual(self.call('/api/settings', {'library': {'movies': 'relative/path'}})[0], 400)
+        self.assertEqual(self.call('/api/status')[1]['checks'], checks)
+        self.assertEqual(self.store.settings(), previous)
+
     def test_wildcard_search_uses_literal_anchor_sorts_and_preserves_selection_data(self):
         matches = [
             {'title': 'Harry.Potter.2020.1080p', 'library_title': 'Harry Potter', 'year': '2020',

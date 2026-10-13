@@ -4,6 +4,8 @@ This Android app opens your existing PlexPort server on a NAS. Sources, qBittorr
 
 For a simple walkthrough, see [Install on Android](../docs/START-ANDROID.md). The current native and website interfaces use Dutch labels. Version 1.2 adds a refreshed sign-in card with clear labels, a password visibility toggle and matching light and dark colors.
 
+The Android source is prepared for version **1.3.0 / code 4**. The consolidated website interface comes from your NAS, so an installed 1.2 app also receives those changes after updating the PlexPort server. The available signed APK remains **1.2.0** until a 1.3 release is built with the original signing key.
+
 ## Install and use
 
 You can download the APK on your phone through **PlexPort → Instellingen → Android-app downloaden (Settings → Download Android app)**.
@@ -39,11 +41,15 @@ From this folder:
 ./build-apk.sh
 ```
 
-This runs URL security unit checks and release lint, then builds a signed release APK in `dist/PlexPort-1.2.0.apk`. The filename follows the version in `app/build.gradle`. Its `.apk.sha256` file is refreshed on each build. Copy the new APK to `plexport/static/plexport.apk` in your NAS code folder to update the website download. For a development build, use `./gradlew assembleDebug`.
+This reuses the existing signing setup, runs URL security unit checks and release lint, and builds a signed release APK. Before copying it to `dist/PlexPort-1.3.0.apk`, the script verifies its signature and requires the same signing certificate as the latest published APK in `dist/`. The filename follows the version in `app/build.gradle`. Its `.apk.sha256` file is refreshed on each successful build. Copy only that verified release APK to `plexport/static/plexport.apk` in your NAS code folder to update the website download.
 
-Your first release build creates a signing key in **`android/.signing/plexport-release.jks`**, with private settings in **`android/.signing/signing.properties`**. Later builds reuse it; they do not replace or regenerate it. Back up the entire `.signing` folder securely: Android accepts updates only with the same signing key. The folder has restricted permissions and is excluded by `.gitignore`. Never share or publish it. If only one of the two files exists, the build stops to avoid creating a different key accidentally.
+Restore the project's existing **`android/.signing/plexport-release.jks`** and **`android/.signing/signing.properties`** from your secure backup. A normal build stops if they are missing or incomplete; it never creates a replacement key. Back up the entire `.signing` folder securely: Android accepts updates only with the same signing key. The folder is excluded by `.gitignore`. Never share or publish it.
 
-The supplied APK is a release build with Android debugging disabled. It is signed for this project and is not published on Google Play. Future updates need the same signing key and a higher `versionCode`. The project's private key is not included: your own builds get their own signature and cannot replace the project's published APK directly.
+For a separate personal APK, explicitly create a personal key with `./build-apk.sh --personal-build --init-new-key`, then use `./build-apk.sh --personal-build` for later builds with that key. These APKs go to the ignored `dist/personal/` folder and cannot update the project's published APK. Do not use this option to replace a missing project key.
+
+For development, use `./gradlew assembleDebug`. Without signing credentials, `./gradlew testDebugUnitTest lintRelease assembleRelease` can check the source and produce an **unsigned** release APK under `app/build/outputs/`; it cannot be installed as a published update. Release guard tests run with `python3 -m unittest discover -s tests`.
+
+The supplied 1.2 APK is a release build with Android debugging disabled. It is signed for this project and is not published on Google Play. Future updates need the same signing key and a higher `versionCode`. The project's private key is not included.
 
 ## Official Android sources
 

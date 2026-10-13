@@ -1,4 +1,18 @@
-# Android APK 1.2.0 verification
+# Android verification
+
+## Source version 1.3.0 / code 4
+
+The website interface loads from the NAS, so its consolidation is also available in the published 1.2 app after updating the server.
+
+- Gradle 8.13 with the pinned distribution checksum and Android Gradle Plugin 8.13.2 completed `testDebugUnitTest lintRelease assembleRelease` using JDK 21 and SDK platform 36. The build produced an unsigned APK only in the ignored build output folder.
+- Three URL security unit tests pass against Java 17 language settings. Release lint reports no errors and 13 warnings in the unchanged native code (WebView JavaScript, backup configuration and untranslated literals).
+- The unsigned APK reports package `nl.plexport.app`, version `1.3.0` / code `4`, minimum API 26, target API 36 and only the `INTERNET` permission.
+- Eight release guard tests pass: missing and incomplete keys stop the build, existing keys remain untouched, unsigned or differently signed APKs cannot replace a public release, and personal APKs stay in a separate folder.
+- The release script requires the original signing backup and checks the certificate against the published APK before writing a distribution APK.
+- The original signing key is unavailable in this cloud environment. No new signing key was created and no signed 1.3 APK has been published. The website download and `dist/PlexPort-1.2.0.apk` retain the existing release.
+- No physical phone or emulator verification was performed for version 1.3.
+
+## Published APK 1.2.0
 
 The public build uses a generic NAS address (`http://truenas.local:8765/`). Enter your own PlexPort address when opening it. Updates preserve an existing saved address.
 

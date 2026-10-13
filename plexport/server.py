@@ -16,7 +16,8 @@ import time
 import urllib.parse
 import webbrowser
 
-from .core import Store, Worker, defaults, friendly_error, new_job, public_job, public_settings, require_storage, storage_report
+from . import __version__
+from .core import Store, Worker, defaults, friendly_error, public_job, public_settings, storage_report
 from .integrations import client, plex_scan, plex_sections, search_source
 from .posters import PosterCache
 from .search import prepare_query, filter_results
@@ -154,7 +155,7 @@ def create_server(host, port, store, password=''):
                     self.session_upgrade = new_session()
                 if parsed.path == '/api/status':
                     jobs = [public_job(j) for j in store.jobs()]
-                    self.send({'jobs': jobs, 'checks': checks.copy(), 'configured_sources': len(store.settings()['sources']), 'authentication': self.authentication})
+                    self.send({'jobs': jobs, 'checks': checks.copy(), 'configured_sources': len(store.settings()['sources']), 'authentication': self.authentication, 'version': __version__})
                 elif parsed.path == '/api/settings':
                     self.send(public_settings(store.settings()))
                 elif parsed.path == '/api/artwork':
@@ -202,7 +203,7 @@ def create_server(host, port, store, password=''):
                         notice = 'Wildcards worden toegepast op de versies die je bronnen teruggeven. Een brede zoekopdracht kan titels missen; gebruik dan meer letters.' if prepared['wildcard'] else ''
                     self.send({'results': results[:250], 'errors': errors, 'search': {'wildcard': prepared['wildcard'], 'notice': notice}})
                 else:
-                    names = {'/': 'index.html', '/app.js': 'app.js', '/artwork.js': 'artwork.js', '/discovery.js': 'discovery.js', '/theme.js': 'theme.js', '/style.css': 'style.css', '/favicon.svg': 'favicon.svg', '/plexport.apk': 'plexport.apk'}
+                    names = {'/': 'index.html', '/app.js': 'app.js', '/jobs.js': 'jobs.js', '/artwork.js': 'artwork.js', '/discovery.js': 'discovery.js', '/theme.js': 'theme.js', '/style.css': 'style.css', '/favicon.svg': 'favicon.svg', '/plexport.apk': 'plexport.apk'}
                     filename = names.get(parsed.path)
                     if not filename:
                         self.send({'error': 'Niet gevonden.'}, 404)
@@ -257,20 +258,19 @@ def create_server(host, port, store, password=''):
                     self.send({'ok': True}, headers=[('Set-Cookie', self.session_cookie('', clear=True)), ('Set-Cookie', 'plexport_signed_out=1; Path=/; HttpOnly; SameSite=Strict')])
                 elif self.path == '/api/settings':
                     with worker.lock:
+                        previous = store.settings()
                         result = store.save_settings(data)
-                        if set(data) != {'preferences'}:
-                            checks.clear()
+                        current = store.settings()
+                        if previous['downloader'] != current['downloader']:
+                            checks.pop('downloader', None)
+                        if (previous['library'] != current['library']
+                                or previous['downloader']['local_root'] != current['downloader']['local_root']):
+                            checks.pop('storage', None)
+                        if previous['plex'] != current['plex']:
+                            checks.pop('plex', None)
                     self.send(result)
                 elif self.path == '/api/jobs':
-                    with worker.lock:
-                        job = new_job(store.settings(), data)
-                        for existing in store.jobs():
-                            same = job['torrent_fingerprint'] == existing.get('torrent_fingerprint', existing['link'])
-                            if same:
-                                raise ValueError('Deze download staat al in PlexPort.')
-                        require_storage(job['config'], job['kind'], job['expected_bytes'])
-                        store.save_job(job)
-                    self.send(public_job(job), 201)
+                    self.send(worker.enqueue(data), 201)
                 elif self.path == '/api/action':
                     self.send(worker.action(str(data.get('id', '')), str(data.get('action', '')),
                                             data.get('delete_files', False), data.get('forget', False)))

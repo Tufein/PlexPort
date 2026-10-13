@@ -238,6 +238,27 @@ def clean_name(value):
     return value
 
 
+def same_downloader(saved, current):
+    return (saved['type'] == current['type']
+            and saved['url'].rstrip('/') == current['url'].rstrip('/'))
+
+
+def current_downloader(saved, current):
+    """Keep the task's server and paths; refresh credentials for that server only."""
+    config = copy.deepcopy(saved)
+    if same_downloader(saved, current):
+        for key in ('username', 'password'):
+            config[key] = current[key]
+    return config
+
+
+def task_paths(downloader, job_id):
+    remote = downloader['remote_root']
+    remote_path = PureWindowsPath(remote) if PureWindowsPath(remote).drive else PurePosixPath(remote)
+    return {'local_dir': str(Path(downloader['local_root']) / job_id),
+            'remote_dir': str(remote_path / job_id)}
+
+
 def new_job(config, data):
     if not config['downloader'].get('url'):
         raise ValueError('Vul eerst het adres van je qBittorrent of Transmission in bij Instellingen.')
@@ -274,14 +295,11 @@ def new_job(config, data):
         return int(value)
     sid = uuid.uuid4().hex
     c = {k: copy.deepcopy(config[k]) for k in ('downloader', 'library', 'plex')}
-    local_dir = str(Path(c['downloader']['local_root']) / sid)
-    remote_root = c['downloader']['remote_root']
-    remote_dir = str(PureWindowsPath(remote_root) / sid) if PureWindowsPath(remote_root).drive else str(PurePosixPath(remote_root) / sid)
     return {'id': sid, 'title': title, 'year': year, 'kind': kind, 'season': optional_number('season'),
             'episode': optional_number('episode'), 'link': link, 'metainfo': metainfo,
             'torrent_fingerprint': hashlib.sha256(binary).hexdigest() if metainfo else link,
-            'source': str(data.get('source', 'Handmatig'))[:120], 'config': c, 'local_dir': local_dir,
-            'remote_dir': remote_dir, 'state': 'queued', 'torrent_id': '', 'created': time.time(),
+            'source': str(data.get('source', 'Handmatig'))[:120], 'config': c, **task_paths(c['downloader'], sid),
+            'state': 'queued', 'torrent_id': '', 'created': time.time(),
             'progress': 0, 'speed': 0, 'eta': -1, 'error': '', 'files_imported': [], 'paused': False,
             'expected_bytes': expected_bytes, 'activity': 'queued'}
 
@@ -415,6 +433,20 @@ class Worker:
         self.lock = threading.RLock()
         self.stop = threading.Event()
 
+    def enqueue(self, data):
+        with self.lock:
+            job = new_job(self.store.settings(), data)
+            for existing in self.store.jobs():
+                if job['torrent_fingerprint'] == existing.get('torrent_fingerprint', existing['link']):
+                    raise ValueError('Deze download staat al in PlexPort.')
+            require_storage(job['config'], job['kind'], job['expected_bytes'])
+            self.store.save_job(job)
+            return public_job(job)
+
+    def downloader(self, job):
+        config = current_downloader(job['config']['downloader'], self.store.settings()['downloader'])
+        return client(config)
+
     def step(self, job):
         state = job['state']
         if state == 'queued':
@@ -429,7 +461,7 @@ class Worker:
                 if resolved != job['link']:
                     job['link'] = resolved
                     self.store.save_job(job)
-            c = client(job['config']['downloader'])
+            c = self.downloader(job)
             # A request may be accepted even if its response or our process is lost.
             # Keep this marker before adding so retries cannot silently switch servers.
             job['add_started'] = True
@@ -443,7 +475,7 @@ class Worker:
                 raise ValueError('qBittorrent heeft geen nieuwe taak aangemaakt. De torrent bestaat mogelijk al; controleer qBittorrent.')
             self.store.save_job(job)
         elif state == 'downloading':
-            status = client(job['config']['downloader']).status(job['torrent_id'])
+            status = self.downloader(job).status(job['torrent_id'])
             job.update({k: status[k] for k in ('progress', 'speed', 'eta', 'paused')})
             job['activity'] = status.get('activity', 'paused' if status['paused'] else 'downloading')
             if status['complete']:
@@ -498,12 +530,7 @@ class Worker:
             if action in ('stop', 'remove') or (action == 'resume' and job['state'] == 'stopped'):
                 c = None
                 if not forget and (job.get('torrent_id') or job.get('add_started')):
-                    config = copy.deepcopy(job['config']['downloader'])
-                    current = self.store.settings()['downloader']
-                    if config['type'] == current['type'] and config['url'].rstrip('/') == current['url'].rstrip('/'):
-                        for key in ('username', 'password'):
-                            config[key] = current[key]
-                    c = client(config)
+                    c = self.downloader(job)
                     if not job.get('torrent_id'):
                         job['torrent_id'] = c.find(job)
                         if not job['torrent_id']:
@@ -531,8 +558,7 @@ class Worker:
                 retry_state = job.get('retry_state', 'downloading' if job['torrent_id'] else 'queued')
                 current = self.store.settings()
                 saved_client = job['config']['downloader']
-                same_endpoint = (current['downloader']['type'] == saved_client['type']
-                                 and current['downloader']['url'].rstrip('/') == saved_client['url'].rstrip('/'))
+                same_endpoint = same_downloader(saved_client, current['downloader'])
                 submitted = bool(job['torrent_id'] or job.get('add_started') or job.get('add_attempts', 0))
                 if retry_state == 'queued' and submitted and not same_endpoint:
                     raise ValueError('Deze download wacht nog op antwoord van de oorspronkelijke downloader. '
@@ -540,19 +566,15 @@ class Worker:
                 job['state'] = job.pop('retry_state', retry_state)
                 job['error'] = ''
                 job['add_attempts'] = 0
-                if same_endpoint:
-                    for key in ('username', 'password'):
-                        saved_client[key] = current['downloader'][key]
+                job['config']['downloader'] = current_downloader(saved_client, current['downloader'])
                 job['config']['library'] = current['library']
                 # Submitted torrents belong to their original server and paths.
                 # Only an untouched queue item can adopt another downloader.
                 if job['state'] == 'queued' and not submitted:
                     job['config'] = current
-                    remote = job['config']['downloader']['remote_root']
-                    job['remote_dir'] = str(PureWindowsPath(remote) / job_id) if PureWindowsPath(remote).drive else str(PurePosixPath(remote) / job_id)
-                    job['local_dir'] = str(Path(current['downloader']['local_root']) / job_id)
+                    job.update(task_paths(current['downloader'], job_id))
             elif action in ('pause', 'resume') and job['state'] == 'downloading':
-                client(job['config']['downloader']).action(job['torrent_id'], action)
+                self.downloader(job).action(job['torrent_id'], action)
                 job['paused'] = action == 'pause'
             else:
                 raise ValueError('Deze actie is niet beschikbaar voor deze download.')

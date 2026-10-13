@@ -4,6 +4,8 @@
 
 ## Available now
 
+Website/server **1.6.0** consolidates downloads and imports into one overview with status tabs. Settings use **Opslaan & controleren (Save & check)**, preserving checks unaffected by changes. Discover groups versions only when title, year and episode identity are reliable. These features also appear in the existing Android WebView after updating the server.
+
 The current source includes simple setup guides, connection and folder checks, download version filters, stop/resume/remove controls, and clearer explanations when a task is waiting. Dark mode, Android, movie and TV posters, qBittorrent, Transmission and media-folder imports are also available.
 
 Website 1.5 adds **saved search preferences** for quality, maximum size, seeders and sorting, shared through your PlexPort server. Save them explicitly with **Voorkeuren onthouden (Remember preferences)**. **Alles tonen (Show everything)** temporarily clears the filters without deleting your saved choices.

@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { quality, select, preferences, matches } = require('../plexport/static/discovery.js');
+const { quality, select, preferences, readPreferences, readFilters, writeFilters, group, matches } = require('../plexport/static/discovery.js');
 const GB = 1024 ** 3;
 const versions = [
   { title: 'Example.2160p.mkv', size: 12 * GB, seeders: 5, source: 'A' },
@@ -57,4 +57,121 @@ test('temporary all-results filters leave saved choices intact', () => {
   assert.equal(select(versions).length, 4);
   assert.deepEqual(saved, { quality: '1080', max_gb: 4, min_seeders: 5, sort: 'smallest' });
   assert.deepEqual(preferences(saved), saved);
+});
+
+test('form filter mapping shares saved choices while keeping the source temporary', () => {
+  const values = { quality: '1080', size: '4', seeders: '5', source: 'B', sort: 'smallest' };
+  const saved = readPreferences(values);
+  assert.deepEqual(saved, { quality: '1080', max_gb: 4, min_seeders: 5, sort: 'smallest' });
+  assert.deepEqual(readFilters(values), { quality: '1080', maxGB: 4, minSeeders: 5, source: 'B', sort: 'smallest' });
+  assert.deepEqual(writeFilters(saved), { ...values, source: 'all' });
+  assert.deepEqual(select(versions, readFilters(values)).map(row => row.index), [1]);
+  assert.deepEqual(values, { quality: '1080', size: '4', seeders: '5', source: 'B', sort: 'smallest' });
+  assert.deepEqual(writeFilters(), { quality: 'all', size: '0', seeders: '0', source: 'all', sort: 'seeders' });
+  assert.deepEqual(readPreferences(null), preferences());
+  assert.deepEqual(readFilters(null), readFilters());
+  assert.deepEqual(readPreferences({ quality: 'bad', size: true, seeders: 'wrong', sort: '<script>' }), preferences());
+});
+
+test('title groups retain every release and its original selection index after sorting and filtering', () => {
+  const results = [
+    { title: 'Nosferatu.2024.2160p', library_title: 'Nosferatu', year: '2024', source: 'A', link: 'magnet:one', size: 12 * GB, seeders: 8 },
+    { title: 'Nosferatu.2024.1080p', library_title: ' NOSFERATU ', year: 2024, source: 'B', link: 'magnet:two', size: 3 * GB, seeders: 20 },
+    { title: 'Other.2024.1080p', library_title: 'Other', year: '2024', source: 'A', link: 'magnet:three', size: GB, seeders: 10 },
+    { title: 'Nosferatu.2024.720p', library_title: 'Nosferatu', year: '2024', source: 'A', link: 'magnet:four', size: GB, seeders: 0 }
+  ];
+  const original = structuredClone(results);
+  const selected = select(results, { minSeeders: 1 });
+  const groups = group(selected, 'movie');
+  assert.deepEqual(groups.map(entry => entry.title), ['NOSFERATU', 'Other']);
+  assert.deepEqual(groups.map(entry => entry.versions.map(row => row.index)), [[1, 0], [2]]);
+  assert.equal(groups[0].versions[0], selected[0]);
+  for (const entry of groups) for (const row of entry.versions) {
+    const { index, quality: rowQuality, ...release } = row;
+    assert.deepEqual(release, results[index]);
+    assert.equal(rowQuality, quality(results[index].title));
+  }
+  assert.deepEqual(results, original);
+  assert.deepEqual(group(select(results, { maxGB: 4, source: 'B' }), 'movie')[0].versions.map(row => row.index), [1]);
+});
+
+test('remakes and movies or series with the same name remain separate', () => {
+  const base = { title: 'Example.S01E01.1080p', library_title: 'Example', year: '2024', season: 1, episode: 1 };
+  const rows = select([
+    { ...base, kind: 'movie' },
+    { ...base, kind: 'movie', year: '1922' },
+    { ...base, kind: 'tv' },
+    { ...base, kind: 'tv', year: '1922' }
+  ]);
+  assert.equal(group(rows, 'movie').length, 4);
+});
+
+test('series groups match only the same known season and episode', () => {
+  const base = { library_title: 'A Show', year: '2020', kind: 'tv', season: '01', episode: '01' };
+  const rows = select([
+    { ...base, title: 'A.Show.S01E01.1080p' },
+    { ...base, title: 'A.Show.S01E01-720p', season: 1, episode: 1 },
+    { ...base, title: 'A.Show.S01E02.1080p', episode: '02' },
+    { ...base, title: 'A.Show.S02E01.1080p', season: '02' }
+  ]);
+  assert.deepEqual(group(rows, 'tv').map(entry => entry.versions.map(row => row.index)), [[0, 1], [2], [3]]);
+});
+
+test('unknown or invalid title identities stay independent without dropping duplicate releases', () => {
+  const movie = { title: 'A.Movie.1080p', library_title: 'A Movie', year: '2024' };
+  const uncertain = [
+    { ...movie, library_title: undefined },
+    { ...movie, library_title: ' ' },
+    { ...movie, library_title: 42 },
+    { ...movie, year: '' },
+    { ...movie, year: true },
+    { ...movie, year: '2024?' },
+    { ...movie, year: '0000' },
+    { ...movie, kind: 'unknown' }
+  ];
+  const rows = select(uncertain.flatMap(row => [{ ...row }, { ...row }]));
+  assert.equal(group(rows, 'movie').length, rows.length);
+  assert.equal(group(select([movie, { ...movie }])).length, 2);
+  assert.equal(group(select([movie, { ...movie }]), 'movie')[0].versions.length, 2);
+  assert.deepEqual(group([], 'movie'), []);
+});
+
+test('ambiguous series releases and conflicting episode metadata do not merge', () => {
+  const base = { title: 'Show.S01E01.1080p', library_title: 'Show', year: '2024', season: 1, episode: 1 };
+  const uncertain = [
+    { ...base, season: '' },
+    { ...base, episode: undefined },
+    { ...base, episode: -1 },
+    { ...base, episode: true },
+    { ...base, season: 1000 },
+    { ...base, episode: 2 },
+    { ...base, title: 'Show.S01E01E02.1080p' },
+    { ...base, title: 'Show_S01E01E02_1080p' },
+    { ...base, title: 'Show.S01E01-E02.1080p' },
+    { ...base, title: 'Show.S01E01-02.1080p' },
+    { ...base, title: 'Show.S01E01.S01E02.1080p' },
+    { ...base, title: 'Show.S01E01+E02.1080p' },
+    { ...base, title: 'Show.S01E01 to 02.1080p' },
+    { ...base, title: 'Show.S01E0100.1080p', episode: 10 }
+  ];
+  const rows = select(uncertain.flatMap(row => [{ ...row }, { ...row }]));
+  assert.equal(group(rows, 'tv').length, rows.length);
+});
+
+test('ambiguous episode headings omit the provider first-episode guess without altering the chosen release', () => {
+  const release = { title: 'Show.S01E01-E02.1080p', library_title: 'Show', year: '2024',
+    season: '01', episode: '01', link: 'magnet:one', source: 'A' };
+  const selected = select([release, { ...release, link: 'magnet:two' }]);
+  const groups = group(selected, 'tv');
+  assert.equal(groups.length, 2);
+  for (const [index, entry] of groups.entries()) {
+    assert.equal(entry.season, '');
+    assert.equal(entry.episode, '');
+    assert.equal(entry.versions[0], selected[index]);
+    assert.equal(entry.versions[0].season, '01');
+    assert.equal(entry.versions[0].episode, '01');
+    assert.equal(entry.versions[0].index, index);
+  }
+  assert.equal(release.season, '01');
+  assert.equal(release.episode, '01');
 });

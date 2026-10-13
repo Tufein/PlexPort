@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
-"""Create a local release key once; never print or include it in the shared package."""
+"""Reuse the release key; create a separate personal key only with explicit opt-in."""
 from pathlib import Path
+import argparse
 import os
 import secrets
 import shutil
@@ -8,20 +9,27 @@ import subprocess
 import tempfile
 
 root = Path(__file__).resolve().parent
+parser = argparse.ArgumentParser(description=__doc__)
+parser.add_argument('--init-new-key', action='store_true',
+                    help='Create a personal signing key that cannot update the published APK.')
+arguments = parser.parse_args()
 private = root / '.signing'
-private.mkdir(exist_ok=True, mode=0o700)
-os.chmod(private, 0o700)
 properties = private / 'signing.properties'
 key = private / 'plexport-release.jks'
 if properties.exists() and key.exists():
     raise SystemExit(0)
 if properties.exists() or key.exists():
     raise SystemExit('Ondertekening is onvolledig. Herstel je .signing-back-up voordat je verder bouwt.')
+if not arguments.init_new_key:
+    raise SystemExit('De bestaande releasesleutel ontbreekt. Herstel android/.signing uit je veilige back-up. '
+                     'Een nieuwe sleutel kan de gepubliceerde APK niet bijwerken.')
 
 java_home = os.environ.get('JAVA_HOME')
 keytool = str(Path(java_home) / 'bin/keytool') if java_home else shutil.which('keytool')
 if not keytool:
     raise SystemExit('JDK 17 of nieuwer is nodig; stel JAVA_HOME in.')
+private.mkdir(exist_ok=True, mode=0o700)
+os.chmod(private, 0o700)
 password = secrets.token_hex(32)
 with tempfile.NamedTemporaryFile(mode='w', prefix='plexport-signing-') as temporary:
     temporary.write(password + '\n')

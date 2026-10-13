@@ -6,7 +6,7 @@ The app currently uses Dutch labels. This guide includes the labels you will see
 
 ## First: is everything ready?
 
-Open **Instellingen → Alles controleren (Settings → Check everything)**. PlexPort checks your downloader and the folders where files should go. If you configured automatic Plex scanning, it also tests that connection.
+Open **Instellingen → Opslaan & controleren (Settings → Save & check)**. PlexPort saves your settings, then checks your downloader and the folders where files should go. If you configured automatic Plex scanning, it also tests that connection. Individual test buttons remain available. Changes to sources or unchanged settings preserve unrelated successful checks.
 
 The checklist on **Overzicht (Overview)** shows what still needs setting up. Adding a source lets you search it; it does not guarantee that its website will always be reachable.
 
@@ -16,7 +16,7 @@ The checklist on **Overzicht (Overview)** shows what still needs setting up. Add
 2. Choose a quality if needed: **Full HD** is 1080p, **4K** is 2160p and **HD** is 720p. The app reads this from the release name; it does not inspect video quality.
 3. Set a maximum size to save space. Results without a known size are excluded when a size limit is set.
 4. Use the minimum sharing count to find versions with people currently sharing them. More seeders may help, but do not guarantee speed.
-5. Click **Kiezen (Choose)** beside the version you want.
+5. Expand the title's download versions and click **Kiezen (Choose)** beside the version you want. Matching titles with reliable year and episode information share a card; remakes, different episodes and uncertain identities remain separate.
 
 ## Search with part of a title
 
@@ -56,7 +56,7 @@ Click **Download toevoegen (Add download)**. Paste a magnet or torrent link, or 
 | **Geïmporteerd** | Imported: files are in your configured media folder. |
 | **Aandacht nodig** | Needs attention: read the message, fix the problem and choose **Opnieuw proberen (Retry)**. |
 
-Under **Downloads**, you can search by name or filter for active tasks, problems or imported media.
+Under **Downloads**, use the tabs for **Onderweg (Active)**, **Gestopt (Stopped)**, **Aandacht nodig (Needs attention)** or **Geïmporteerd (Imported)**, or select all tasks. The same name search applies to each view. Imported files remain visible if sharing is stopped or a Plex scan needs attention.
 
 ## Stop or remove a download
 
@@ -68,7 +68,7 @@ If the downloader is unavailable, choose **Alleen uit PlexPort (Only from PlexPo
 
 ## Watch in Plex
 
-Movies and shows appear in Plex once it has scanned the media folders and identified the title. With a configured Plex connection, PlexPort requests that scan. Under **Bibliotheek (Library)**, you can also choose **Plex laten scannen (Ask Plex to scan)**, or refresh the library directly in Plex.
+Movies and shows appear in Plex once it has scanned the media folders and identified the title. With a configured Plex connection, PlexPort requests that scan. Under **Downloads → Geïmporteerd (Imported)**, you can also choose **Plex laten scannen (Ask Plex to scan)**, or refresh the library directly in Plex. Existing links to the former Library screen open the imported view.
 
 Original downloads stay in place for sharing. PlexPort does not automatically delete them.
 

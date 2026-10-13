@@ -63,7 +63,7 @@ For scanning after import, enter the Plex address and token. **Opslaan & Plex te
 
 Files are imported even without a Plex token. Enable automatic or periodic scanning in Plex in that case. Network folders do not always support automatic change detection, so an API scan or periodic scan may be needed. See [Plex library settings](https://support.plex.tv/articles/200289526-library/).
 
-A successful scan request means Plex accepted it; the app does not verify that Plex subsequently identifies the title correctly. The Library screen shows only PlexPort imports, not your full Plex catalog.
+A successful scan request means Plex accepted it; the app does not verify that Plex subsequently identifies the title correctly. **Downloads → Geïmporteerd (Imported)** shows only PlexPort imports, not your full Plex catalog. Existing `#library` links open that view.
 
 ### Sources and search
 
@@ -103,6 +103,8 @@ node --test tests/test_discovery.cjs
 ```
 
 Tests use temporary folders and local test servers. They cover torrent APIs, imports, restarts, path protection, secret redaction, search feeds and the browser API. A real torrent client, Docker installation, external source and Plex server are needed to test integrations in your own environment.
+
+Server status at `GET /api/status` includes the running `version`. Download creation uses one task-layer entry point for locking, duplicate checks, folder checks and persistence; the worker repeats folder checks before submission. Downloader credentials can refresh only for the task's original endpoint, without rewriting its saved paths. Saving unchanged settings or search sources preserves unrelated connection checks. See [NAS updates](UPDATING-NAS.md) for verified releases, backups and code-only rollback.
 
 ## Updated controls
 

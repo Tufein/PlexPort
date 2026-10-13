@@ -1,5 +1,6 @@
 import base64
 import copy
+from concurrent.futures import ThreadPoolExecutor
 import errno
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import json
@@ -13,6 +14,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
+from plexport import __version__
 from plexport.core import Store, Worker, defaults, import_media, merge_settings, new_job, public_job, public_settings, publish_file, safe_file, storage_report
 from plexport.integrations import QBittorrent, Transmission, plex_sections, search_source
 from plexport.server import create_server
@@ -165,6 +167,80 @@ class TempFixture(unittest.TestCase):
 
 
 class CoreTests(TempFixture):
+    def test_concurrent_enqueue_rejects_duplicates_and_returns_no_private_task_data(self):
+        store = Store(self.root/'state')
+        store.save_settings(self.config)
+        worker = Worker(store)
+        start = threading.Barrier(2)
+
+        def enqueue():
+            start.wait(timeout=3)
+            try:
+                return worker.enqueue({'title': 'Concurrent', 'link': MAGNET})
+            except ValueError as error:
+                return str(error)
+
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            results = list(pool.map(lambda _: enqueue(), range(2)))
+        queued = [result for result in results if isinstance(result, dict)]
+        rejected = [result for result in results if isinstance(result, str)]
+        self.assertEqual(len(queued), 1)
+        self.assertEqual(rejected, ['Deze download staat al in PlexPort.'])
+        self.assertEqual(len(store.jobs()), 1)
+        self.assertEqual(queued[0]['state'], 'queued')
+        for private in ('config', 'link', 'metainfo', 'local_dir', 'remote_dir', 'torrent_fingerprint'):
+            self.assertNotIn(private, queued[0])
+
+    def test_enqueue_rejects_missing_storage_and_rechecks_before_submission(self):
+        store = Store(self.root/'state')
+        store.save_settings(self.config)
+        worker = Worker(store)
+        movies = Path(self.config['library']['movies'])
+        movies.rmdir()
+        with self.assertRaisesRegex(ValueError, 'Filmmap'):
+            worker.enqueue({'title': 'Missing storage', 'link': MAGNET})
+        self.assertEqual(store.jobs(), [])
+        movies.mkdir()
+        # The unrelated TV folder is not required to enqueue a movie.
+        Path(self.config['library']['tv']).rmdir()
+        queued = worker.enqueue({'title': 'Movie', 'link': MAGNET})
+        movies.rmdir()
+        with patch('plexport.core.client') as downloader:
+            worker.tick()
+            downloader.assert_not_called()
+        failed = store.job(queued['id'])
+        self.assertEqual(failed['state'], 'error')
+        self.assertFalse(failed.get('add_started', False))
+        self.assertFalse(Path(failed['local_dir']).exists())
+
+    def test_enqueue_rejects_legacy_tasks_without_fingerprint(self):
+        store = Store(self.root/'state')
+        store.save_settings(self.config)
+        legacy = self.job()
+        legacy.pop('torrent_fingerprint')
+        store.save_job(legacy)
+        with self.assertRaisesRegex(ValueError, 'staat al'):
+            Worker(store).enqueue({'title': 'Duplicate', 'link': MAGNET})
+        self.assertEqual(store.jobs(), [legacy])
+
+    def test_retry_of_untouched_task_uses_windows_and_unc_download_paths(self):
+        self.config['downloader']['remote_root'] = 'Z:\\Downloads'
+        store = Store(self.root/'state')
+        store.save_settings(self.config)
+        worker = Worker(store)
+        queued = worker.enqueue({'title': 'Windows paths', 'link': MAGNET})
+        job = store.job(queued['id'])
+        self.assertEqual(job['remote_dir'], 'Z:\\Downloads\\' + job['id'])
+        job.update(state='error', retry_state='queued')
+        store.save_job(job)
+        new_root = self.root/'new-downloads'
+        new_root.mkdir()
+        store.save_settings({'downloader': {'remote_root': '\\\\nas\\downloads', 'local_root': str(new_root)}})
+        worker.action(job['id'], 'retry')
+        retried = store.job(job['id'])
+        self.assertEqual(retried['remote_dir'], '\\\\nas\\downloads\\' + job['id'])
+        self.assertEqual(retried['local_dir'], str(new_root/job['id']))
+
     def test_storage_reports_each_folder_without_creating_missing_mounts(self):
         Path(self.config['library']['tv']).rmdir()
         report = storage_report(self.config)
@@ -648,7 +724,9 @@ class ServerTests(TempFixture):
             self.call('/api/jobs', {'title':'API Film', 'link':MAGNET})
         self.assertEqual(duplicate.exception.code, 400)
         duplicate.exception.close()
-        self.assertEqual(len(self.call('/api/status')[1]['jobs']), 1)
+        status = self.call('/api/status')[1]
+        self.assertEqual(len(status['jobs']), 1)
+        self.assertEqual(status['version'], __version__)
         self.call('/api/settings', {'plex':{'token':'secret'}})
         settings = self.call('/api/settings')[1]
         self.assertTrue(settings['plex']['token_set'])
@@ -706,6 +784,9 @@ class ServerTests(TempFixture):
         with urllib.request.urlopen(self.url+'/') as response:
             self.assertIn(b'<html lang="nl">', response.read())
             self.assertIn("frame-ancestors 'none'", response.headers['Content-Security-Policy'])
+        with urllib.request.urlopen(self.url+'/jobs.js') as response:
+            self.assertEqual(response.status, 200)
+            self.assertIn(b'PlexPortJobs', response.read())
         with self.assertRaises(urllib.error.HTTPError) as missing:
             urllib.request.urlopen(self.url+'/../data/plexport.sqlite')
         self.assertEqual(missing.exception.code, 404)

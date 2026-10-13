@@ -4,8 +4,8 @@ PlexPort connects a user's search sources and torrent client to their existing P
 
 ## Current state
 
-- Website/server source: **1.5**, including movie/TV posters, stop/resume/remove, saved search preferences and wildcard search.
-- Android: **1.2.0**, `versionCode` **3**, package `nl.plexport.app`. It loads the website from the user's server, so website features do not require a new APK. A source update does not prove that the user's NAS has been updated.
+- Website/server source: **1.6.0**, including a unified task/import view, shared settings checks and grouped download versions, alongside actor/wildcard search and saved preferences. `/api/status` reports the running server version.
+- Published Android APK: **1.2.0**, `versionCode` **3**, package `nl.plexport.app`. Native source for the next upgrade is **1.3.0**, `versionCode` **4**; publish it only after building with the existing private signing key and verifying certificate compatibility. The WebView loads the website from the user's server. A source update does not prove that the user's NAS has been updated.
 - The Android release build, signature, URL tests and lint have passed. The personal build was installed in an isolated emulator, but native screen rendering and a physical phone flow have not been validated. Do not describe those as completed checks.
 - Consult [CHANGELOG.md](CHANGELOG.md), [ROADMAP.md](ROADMAP.md), [next feature briefs](docs/NEXT-FEATURES.md) and [technical guide](docs/TECHNISCH.md). Future proposals are not implemented merely because they appear there.
 
@@ -40,6 +40,8 @@ The backend uses Python 3.11+ and only the standard library; no Python dependenc
 **Search:** ordinary queries remain supported. `*` matches any number of characters and `?` one character. Discover sends a useful literal fragment to sources and filters only the bounded results they return; this is not a whole-catalog search. Preserve query/result limits and use bounded-state matching rather than converting user input to a regex that can backtrack excessively. The download-list filter runs locally.
 
 **Preferences:** `preferences` contains `quality`, `max_gb`, `min_seeders` and `sort`. Values are validated against supported choices. Legacy settings get defaults in memory without a database rewrite on read. Partial saves preserve other fields and secrets. Explicit save shares preferences through the server; **Alles tonen** changes only current filters. Source selection is temporary.
+
+**Task views:** downloads and imports share one task list. Imported files remain visible even when sharing is stopped or a Plex scan fails. Preserve `#library` as an alias to the imported view. Group search versions only with reliable title/year/type and TV episode identity; preserve each original result index and release link.
 
 **Imports:** only complete, supported media from PlexPort-managed jobs is imported. Samples are skipped; RAR/ZIP files are not extracted. Try a hardlink, with a protected copy fallback when necessary. Keep originals available for seeding, refuse unsafe paths and never overwrite existing library content with different bytes. A Plex scan request is not confirmation that Plex matched a title.
 

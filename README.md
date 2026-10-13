@@ -20,7 +20,7 @@ PlexPort puts completed videos in the right media folder.
 ## What can you do with it?
 
 - **Find and choose.** Filter by Full HD, 4K, file size and the number of people sharing a file.
-- **Follow downloads.** See what is happening, stop or resume a download and understand why a task is waiting. Remove unwanted tasks, with an optional choice to delete downloaded files.
+- **Follow downloads and imports.** Switch between active, stopped, problem and imported tasks in one overview. Stop or resume a download and understand why it is waiting. Remove unwanted tasks, with an optional choice to delete downloaded files.
 - **Organize movies and shows.** Completed videos and subtitles go to your chosen Plex folders.
 - **Catch problems early.** Check connections and folders with one button. See available space before starting a download.
 - **Use your phone.** The Android app opens the same PlexPort server and the same downloads.
@@ -56,9 +56,9 @@ Choose the option that matches your setup:
 
 ## Your first download in three steps
 
-1. **Set up:** open **Instellingen (Settings)**, enter your downloader and folders, then click **Alles controleren (Check everything)**. Add a search source if you want to search inside the app.
+1. **Set up:** open **Instellingen (Settings)**, enter your downloader and folders, then click **Opslaan & controleren (Save & check)**. Add a search source if you want to search inside the app.
 2. **Choose:** open **Ontdekken (Discover)**, search for a title (or a pattern such as `Star*`) and use the filters to find a suitable version. **Voorkeuren onthouden (Remember preferences)** saves your quality and size choices for the website and Android. Click **Kiezen (Choose)** and check the title and destination.
-3. **Follow:** click **Download starten (Start download)**. Track progress under **Downloads**, with posters to recognize your titles. Once the video has been placed, the task appears under **Bibliotheek (Library)**.
+3. **Follow:** click **Download starten (Start download)**. Track progress under **Downloads**, with posters to recognize your titles. Once the video has been placed, find it in the **Geïmporteerd (Imported)** view.
 
 You can also use **Download toevoegen (Add download)** for your own link or torrent file. Only download and share media you have permission to use.
 
@@ -68,7 +68,7 @@ You can also use **Download toevoegen (Add download)** for your own link or torr
 - Plex needs read access to the movie and TV folders. Entering a Plex server address alone is not enough.
 - Original downloads stay in place for sharing. If files need to be copied, they may use extra space.
 - The space check is a snapshot. The file size of a manually added link is not known in advance.
-- **Bibliotheek (Library)** shows files imported by PlexPort, not your entire Plex collection.
+- **Downloads → Geïmporteerd (Imported)** shows files imported by PlexPort, not your entire Plex collection.
 - Only downloads added through PlexPort are processed automatically. The app does not extract ZIP or RAR archives.
 
 ## Something isn't working
@@ -80,6 +80,6 @@ Have an idea? [Suggest a feature](https://github.com/Tufein/PlexPort/issues/new?
 <details>
 <summary>For administrators and developers</summary>
 
-[Technical guide](docs/TECHNISCH.md) · [TrueNAS folder setup](INSTALLATIE-TRUENAS.md) · [Build Android app](android/README.md) · [Contribute](CONTRIBUTING.md) · [What's new](CHANGELOG.md) · [Roadmap](ROADMAP.md)
+[Technical guide](docs/TECHNISCH.md) · [Update an existing NAS](docs/UPDATING-NAS.md) · [TrueNAS folder setup](INSTALLATIE-TRUENAS.md) · [Build Android app](android/README.md) · [Contribute](CONTRIBUTING.md) · [What's new](CHANGELOG.md) · [Roadmap](ROADMAP.md)
 
 </details>

@@ -1,5 +1,15 @@
 # What's new?
 
+## Website/server 1.6.0 — October 13, 2026
+
+- **Downloads** now brings active, stopped, problem and imported tasks together, with status tabs and a shared search. The imported view retains file paths and **Plex laten scannen (Ask Plex to scan)**. Existing `#library` links open that view.
+- **Opslaan & controleren (Save & check)** is the main settings action. Individual connection tests share the same reporting. Saving a search source or unchanged settings retains unrelated successful checks; changing a connection or folder invalidates only its affected checks.
+- Discover groups trustworthy matching titles into one card with separate download versions. Different years and TV episodes stay separate, and incomplete identity information is not guessed. Filters retain the original version selection.
+- Download task creation, duplicate protection and folder checks share one entry point. Updated downloader credentials apply only to the original downloader; submitted tasks retain their original server and download paths.
+- Status updates refresh progress and artwork once. Shared filter mappings retain saved preferences and the temporary **Alles tonen (Show everything)** behavior.
+- Signing in from the main server URL now reloads the app when the destination URL is unchanged, retaining the selected view.
+- These website changes also appear in the existing Android WebView after updating its server. Publishing server source does not confirm that a NAS or phone has been updated.
+
 ## Use PlexPort away from home — Unreleased
 
 - A new [Tailscale guide](docs/START-REMOTE.md) explains how to reach PlexPort from your phone or another computer without opening router ports. No server or Android update is needed.
