@@ -7,6 +7,8 @@ import urllib.parse
 import urllib.request
 import xml.etree.ElementTree as ET
 
+from .selection import identities, metadata_token
+
 
 def http_url(value):
     parsed = urllib.parse.urlsplit(value)
@@ -88,13 +90,17 @@ class Transmission:
     def status(self, torrent_id):
         items = self.rpc('torrent-get', {'ids': [torrent_id], 'fields': [
             'hashString', 'name', 'percentDone', 'rateDownload', 'eta', 'status',
-            'error', 'errorString', 'files', 'fileStats', 'metadataPercentComplete', 'sizeWhenDone', 'peersConnected'
+            'error', 'errorString', 'files', 'fileStats', 'metadataPercentComplete', 'sizeWhenDone', 'peersConnected', 'downloadDir'
         ]})['torrents']
         if not items:
             raise ValueError('De torrent is niet meer aanwezig in Transmission.')
         t = items[0]
         if t['error']:
             raise ValueError('Transmission: ' + t['errorString'])
+        all_files = [{'index': i, 'name': f['name'], 'size': f['length'],
+                      'progress': f['bytesCompleted'] / f['length'] if f['length'] else 0,
+                      'wanted': bool(t['fileStats'][i]['wanted'])}
+                     for i, f in enumerate(t['files'])]
         files = [f for i, f in enumerate(t['files']) if t['fileStats'][i]['wanted']]
         complete = (t['metadataPercentComplete'] == 1 and t['sizeWhenDone'] > 0
                     and t['percentDone'] >= 1 and t['status'] not in (1, 2)
@@ -109,7 +115,21 @@ class Transmission:
         return {'progress': t['percentDone'], 'speed': t['rateDownload'], 'eta': t['eta'],
                 'paused': t['status'] == 0, 'complete': complete,
                 'activity': activity,
+                'metadata_ready': t['metadataPercentComplete'] == 1 and bool(all_files),
+                'save_dir': t.get('downloadDir', ''), 'all_files': all_files,
                 'files': [{'name': f['name'], 'size': f['length']} for f in files]}
+
+    def select_files(self, torrent_id, indices, expected_dir, token):
+        torrent_id = single_torrent(torrent_id)
+        status = self.status(torrent_id)
+        _selection_status(torrent_id, status, indices, expected_dir, token)
+        unwanted = [item['index'] for item in status['all_files'] if item['index'] not in indices]
+        args = {'ids': [torrent_id], 'files-wanted': indices}
+        # Transmission treats empty arrays as ALL files, so omit an empty unwanted list.
+        if unwanted:
+            args['files-unwanted'] = unwanted
+        self.rpc('torrent-set', args)
+        _selection_status(torrent_id, self.status(torrent_id), indices, expected_dir, token, verify=True)
 
     def action(self, torrent_id, action):
         self.rpc('torrent-stop' if action == 'pause' else 'torrent-start', {'ids': [single_torrent(torrent_id)]})
@@ -194,8 +214,11 @@ class QBittorrent:
         t = items[0]
         if t['state'] in ('error', 'missingFiles'):
             raise ValueError('qBittorrent: ' + t['state'] + '. Controleer opslagruimte en bestanden.')
-        files = json.loads(self.call('torrents/files?' + urllib.parse.urlencode({'hash': torrent_id})))
-        files = [f for f in files if f.get('priority', 1) > 0]
+        contents = json.loads(self.call('torrents/files?' + urllib.parse.urlencode({'hash': torrent_id})))
+        all_files = [{'index': f.get('index', i), 'name': f['name'], 'size': f['size'],
+                      'progress': f.get('progress', 0), 'wanted': f.get('priority', 1) > 0}
+                     for i, f in enumerate(contents)]
+        files = [f for f in contents if f.get('priority', 1) > 0]
         complete = (t['progress'] >= 1 and t.get('amount_left', 0) == 0 and t.get('size', 0) > 0
                     and 'checking' not in t['state'].lower() and 'meta' not in t['state'].lower() and t['state'] != 'moving'
                     and all(f['progress'] == 1 for f in files))
@@ -212,7 +235,18 @@ class QBittorrent:
         return {'progress': t['progress'], 'speed': t['dlspeed'], 'eta': t['eta'],
                 'paused': t['state'] in ('pausedDL', 'stoppedDL'), 'complete': complete,
                 'activity': activity,
+                'metadata_ready': bool(all_files) and 'meta' not in state.lower(),
+                'save_dir': t.get('save_path', ''), 'all_files': all_files,
                 'files': [{'name': f['name'], 'size': f['size']} for f in files]}
+
+    def select_files(self, torrent_id, indices, expected_dir, token):
+        torrent_id = single_torrent(torrent_id)
+        status = self.status(torrent_id)
+        _selection_status(torrent_id, status, indices, expected_dir, token)
+        all_indices = [item['index'] for item in status['all_files']]
+        self.call('torrents/filePrio', {'hash': torrent_id, 'id': '|'.join(map(str, all_indices)), 'priority': 0})
+        self.call('torrents/filePrio', {'hash': torrent_id, 'id': '|'.join(map(str, indices)), 'priority': 1})
+        _selection_status(torrent_id, self.status(torrent_id), indices, expected_dir, token, verify=True)
 
     def action(self, torrent_id, action):
         torrent_id = single_torrent(torrent_id)
@@ -228,6 +262,22 @@ class QBittorrent:
                 raise ValueError('De torrent is al uit qBittorrent verwijderd. Verwijder de overgebleven bestanden zelf of kies bestanden behouden.')
             same_download_dir(items[0].get('save_path', ''), expected_dir)
         self.call('torrents/delete', {'hashes': torrent_id, 'deleteFiles': 'true' if delete_files else 'false'})
+
+
+def _selection_status(torrent_id, status, indices, expected_dir, token, verify=False):
+    """Revalidate metadata and original location immediately before/after mutation."""
+    same_download_dir(status.get('save_dir', ''), expected_dir)
+    if not status.get('metadata_ready'):
+        raise ValueError('De downloader wacht nog op bestandsmetadata.')
+    current = identities(status.get('all_files'))
+    if not isinstance(indices, list) or not indices or any(type(i) is not int for i in indices):
+        raise ValueError('Kies minimaal één bestand.')
+    if len(set(indices)) != len(indices) or not set(indices).issubset({item['index'] for item in current}):
+        raise ValueError('De gekozen bestanden bestaan niet meer. Vernieuw de bestandslijst.')
+    if metadata_token(torrent_id, current) != token:
+        raise ValueError('De bestandsmetadata is veranderd. Vernieuw de lijst en kies opnieuw.')
+    if verify and {item['index'] for item in status['all_files'] if item.get('wanted')} != set(indices):
+        raise ValueError('De downloader heeft de bestandskeuze niet bevestigd. Probeer opnieuw.')
 
 
 def client(config):

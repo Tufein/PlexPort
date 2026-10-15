@@ -81,3 +81,17 @@ Images need Internet access from the PlexPort server. The server sends the title
 ## Searching by actor
 
 In **Ontdekken (Discover)**, choose **Op acteur (By actor)** and enter a name, for example `Tom Hanks`. PlexPort shows films whose cast list includes that name, with the first cast members next to each version. This needs a WatchSoMuch source under **Instellingen (Settings)**. It shows at most the first eight matching titles that WatchSoMuch returns, so a very long filmography can be incomplete; add a year or search by title for a specific film.
+
+## Check before starting
+
+The add-download window compares the chosen title with current PlexPort tasks. It does not inspect your full Plex library. Open a matching task or tick **Toch met deze versie doorgaan (Continue with this version)** to intentionally add another version. An identical torrent remains blocked. Different known movie years and episodes remain separate; incomplete information produces a cautious warning.
+
+The same window tests whether the configured folders can reuse the downloaded file or need a second copy. For a known size it estimates extra media space, including both copies when storage is shared. An unknown method or unknown file size is shown explicitly. Space is not reserved, and other downloads can change what is available.
+
+## Choose episodes and subtitles
+
+For a new TV task, enable **Zelf afleveringen en bestanden kiezen (Choose episodes and files)** before starting. Your downloader fetches file information; it may already contact peers and receive data. Once metadata is ready the torrent waits for your choice, and PlexPort does not import anything yet.
+
+In Downloads, choose **Afleveringen kiezen (Choose episodes)**. Select at least one supported video and explicitly select any matching subtitles. Check original filenames and episode numbers. A video containing several episodes stays one file and is never split. **Keuze opslaan en downloaden (Save selection and download)** applies the selection to this task's torrent. Only selected files that have completed can be imported. **Later kiezen (Choose later)** keeps the import waiting.
+
+If metadata changes, reload the file list and confirm again. Stopping, restarting or retrying a task retains the saved selection. Downloads created before this opt-in keep their existing behavior.

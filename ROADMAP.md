@@ -4,7 +4,9 @@
 
 ## Available now
 
-Website/server **1.6.0** consolidates downloads and imports into one overview with status tabs. Settings use **Opslaan & controleren (Save & check)**, preserving checks unaffected by changes. Discover groups versions only when title, year and episode identity are reliable. These features also appear in the existing Android WebView after updating the server.
+Website/server **1.7.0** adds warnings about titles already in PlexPort history, an observed hardlink/copy space estimate and opt-in TV file selection for qBittorrent and Transmission. Download metadata can contact peers before selection; importing waits for a confirmed choice. These checks do not inspect the full Plex library or reserve disk space.
+
+Version 1.6.0 consolidates downloads and imports into one overview with status tabs. Settings use **Opslaan & controleren (Save & check)**, preserving checks unaffected by changes. Discover groups versions only when title, year and episode identity are reliable. These features also appear in the existing Android WebView after updating the server.
 
 The current source includes simple setup guides, connection and folder checks, download version filters, stop/resume/remove controls, and clearer explanations when a task is waiting. Dark mode, Android, movie and TV posters, qBittorrent, Transmission and media-folder imports are also available.
 
@@ -18,13 +20,13 @@ The GitHub documentation is now in English. The app interface still uses Dutch l
 
 ## Next improvements researched
 
-The following priorities are proposals based on this app's current behavior and the primary documentation below. They are not built yet, and no delivery dates are promised. [Developer acceptance criteria](docs/NEXT-FEATURES.md) describe the first three.
+The first three researched priorities shipped in 1.7.0; their behavior and limits are described in [feature notes](docs/NEXT-FEATURES.md). The remaining ideas below are proposals without promised delivery dates.
 
 | Idea | How it helps | What needs to work first |
 |---|---|---|
-| **1 · Warn about an existing title** | Avoid downloading a second version of a film or episode by accident. | Distinguish remakes and episodes; show a warning with an intentional override. Existing identical-download protection stays in place. |
-| **2 · Explain extra storage before importing** | Understand whether an import can reuse the video or requires a copy. | Test actual hardlink support; the same disk or folder name is not proof. Explain that estimates do not reserve space. |
-| **3 · Choose episodes from a season** | Download only the episodes you want. | Wait for trustworthy file information, persist selected files and import only complete selected media. |
+| **Available · Warn about an existing title** | Avoid downloading a second version of a film or episode by accident. | Distinguish remakes and episodes; show a warning with an intentional override. Existing identical-download protection stays in place. |
+| **Available · Explain extra storage before importing** | Understand whether an import can reuse the video or requires a copy. | Test actual hardlink support; the same disk or folder name is not proof. Explain that estimates do not reserve space. |
+| **Available · Choose episodes from a season** | Download only the episodes you want. | Wait for trustworthy file information, persist selected files and import only complete selected media. |
 | **Import an existing qBittorrent download** | Organize files downloaded outside PlexPort in Plex too. | Verify the existing location, avoid duplicate imports and let you confirm the title. Do not relocate or delete unrelated files. |
 | **Completion and problem notifications** | Know when media is imported or a task needs attention. | Ask users which channel they want; avoid repeated alerts and protect channel credentials. A scan request alone does not prove Plex recognized the title. |
 | **Guided TrueNAS setup** | Fewer folder settings and fewer incorrect mounts. | Preserve existing datasets, permissions and media without creating empty replacement folders. |

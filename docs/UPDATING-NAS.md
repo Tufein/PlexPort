@@ -14,7 +14,7 @@ Python 3.9 or newer is required on the host.
 
 ## Prepare a verified release
 
-Download the release archive and `SHA256SUMS` from the published GitHub release.
+Download the release archive and its `.tar.gz.sha256` sidecar from the published GitHub release.
 Use the archive's SHA-256 from that release as `RELEASE_SHA256` below. The
 archive contains a second `SHA256SUMS` manifest covering every runtime file.
 The helper requires the external archive checksum and verifies the internal
@@ -97,7 +97,16 @@ container or assume it replaces an image.
 ## Roll back runtime code
 
 If startup or functional checks fail, stop only PlexPort again and restore its
-previous runtime from the printed backup:
+previous runtime from the printed backup.
+
+Before returning from 1.7.0 to an older runtime, stop every unfinished task that
+uses episode/file selection through PlexPort's **Stoppen (Stop)** action while
+1.7.0 is still running. Older versions do not understand the selection-confirmation
+gate. Keep those tasks stopped until 1.7.0 or newer is restored; do not resume them
+in an older interface. The rollback preserves current task records and selections,
+but cannot add this safety behavior to older code.
+
+After those checks:
 
 ```sh
 python3 /path/to/verified-release/tools/update_nas.py \

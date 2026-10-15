@@ -16,7 +16,10 @@ import urllib.error
 import urllib.parse
 import uuid
 
-from .integrations import client, http_url, plex_scan
+from .integrations import client, http_url, plex_scan, same_download_dir
+from .duplicates import title_conflicts
+from .selection import describe_files, episode_info, identities, metadata_token, selected_complete, validate_selection
+from .storage import import_capability
 
 VIDEO = {'.mkv', '.mp4', '.m4v', '.avi', '.mov', '.ts', '.webm', '.mpg', '.mpeg'}
 SUBTITLE = {'.srt', '.ass', '.ssa', '.vtt', '.sub', '.idx'}
@@ -259,14 +262,40 @@ def task_paths(downloader, job_id):
             'remote_dir': str(remote_path / job_id)}
 
 
-def new_job(config, data):
-    if not config['downloader'].get('url'):
-        raise ValueError('Vul eerst het adres van je qBittorrent of Transmission in bij Instellingen.')
+class APIConflict(ValueError):
+    def __init__(self, message, code, **details):
+        super().__init__(message)
+        self.code, self.details = code, details
+
+
+def title_candidate(data):
     kind = data.get('kind', 'movie')
     if kind not in ('movie', 'tv'):
         raise ValueError('Kies film of serie.')
-    expected_bytes = download_size(data.get('expected_bytes', 0))
     title = clean_name(data.get('title', ''))
+    year = str(data.get('year', '')).strip()
+    if year and not re.fullmatch(r'(18|19|20|21)\d{2}', year):
+        raise ValueError('Gebruik een jaartal van vier cijfers.')
+    def optional_number(key):
+        value = data.get(key, '')
+        if value in ('', None):
+            return None
+        if not str(value).isdigit() or not 0 <= int(value) <= 999:
+            raise ValueError('Ongeldig seizoen- of afleveringsnummer.')
+        return int(value)
+    return {'title': title, 'year': year, 'kind': kind,
+            'season': optional_number('season'), 'episode': optional_number('episode')}
+
+
+def new_job(config, data):
+    if not config['downloader'].get('url'):
+        raise ValueError('Vul eerst het adres van je qBittorrent of Transmission in bij Instellingen.')
+    candidate = title_candidate(data)
+    kind = candidate['kind']
+    expected_bytes = download_size(data.get('expected_bytes', 0))
+    selection = data.get('selection_requested', False)
+    if type(selection) is not bool or (selection and kind != 'tv'):
+        raise ValueError('Afleveringen kiezen is alleen beschikbaar voor series.')
     link, metainfo = str(data.get('link', '')).strip(), data.get('metainfo', '')
     if bool(link) == bool(metainfo):
         raise ValueError('Voeg één magnetlink, torrent-URL of torrentbestand toe.')
@@ -283,25 +312,19 @@ def new_job(config, data):
             raise ValueError('De magnetlink bevat geen torrent-ID.')
     else:
         http_url(link)
-    year = str(data.get('year', '')).strip()
-    if year and not re.fullmatch(r'(18|19|20|21)\d{2}', year):
-        raise ValueError('Gebruik een jaartal van vier cijfers.')
-    def optional_number(key):
-        value = data.get(key, '')
-        if value in ('', None):
-            return None
-        if not str(value).isdigit() or not 0 <= int(value) <= 999:
-            raise ValueError('Ongeldig seizoen- of afleveringsnummer.')
-        return int(value)
     sid = uuid.uuid4().hex
     c = {k: copy.deepcopy(config[k]) for k in ('downloader', 'library', 'plex')}
-    return {'id': sid, 'title': title, 'year': year, 'kind': kind, 'season': optional_number('season'),
-            'episode': optional_number('episode'), 'link': link, 'metainfo': metainfo,
+    job = {'id': sid, **candidate, 'link': link, 'metainfo': metainfo,
             'torrent_fingerprint': hashlib.sha256(binary).hexdigest() if metainfo else link,
             'source': str(data.get('source', 'Handmatig'))[:120], 'config': c, **task_paths(c['downloader'], sid),
             'state': 'queued', 'torrent_id': '', 'created': time.time(),
             'progress': 0, 'speed': 0, 'eta': -1, 'error': '', 'files_imported': [], 'paused': False,
             'expected_bytes': expected_bytes, 'activity': 'queued'}
+    if selection:
+        job.update(selection_requested=True, selection_state='waiting_metadata', selection_files=[],
+                   selection_metadata=[], selection_metadata_token='', selection_error='',
+                   torrent_expected_bytes=expected_bytes, expected_bytes=0)
+    return job
 
 
 def public_job(job):
@@ -338,7 +361,7 @@ def publish_file(source, destination):
         try:
             os.link(source, temp)
         except OSError as e:
-            if e.errno not in (errno.EXDEV, errno.EPERM, errno.EACCES, errno.ENOTSUP):
+            if e.errno not in (errno.EXDEV, errno.EPERM, errno.EACCES, errno.ENOTSUP, errno.ENOSYS):
                 raise
             if shutil.disk_usage(destination.parent).free < source.stat().st_size:
                 raise ValueError('Te weinig vrije ruimte om deze video naar de mediamap te kopiëren. Maak ruimte vrij en kies Opnieuw proberen.')
@@ -348,7 +371,7 @@ def publish_file(source, destination):
         try:
             os.link(temp, destination)
         except OSError as e:
-            if e.errno not in (errno.EXDEV, errno.EPERM, errno.EACCES, errno.ENOTSUP):
+            if e.errno not in (errno.EXDEV, errno.EPERM, errno.EACCES, errno.ENOTSUP, errno.ENOSYS):
                 raise
             # rename is atomic on the same share; protect with the single import worker.
             if destination.exists():
@@ -359,6 +382,18 @@ def publish_file(source, destination):
 
 
 def import_media(job, files):
+    if job.get('selection_requested'):
+        if job.get('selection_state') != 'committed':
+            raise ValueError('Kies en bevestig eerst de afleveringen. Er is nog niets geïmporteerd.')
+        # The importer is independently guarded, even when called outside the worker.
+        if metadata_token(job['torrent_id'], job['selection_metadata']) != job['selection_metadata_token']:
+            raise ValueError('De opgeslagen bestandskeuze is ongeldig. Vernieuw de bestandslijst.')
+        chosen = {item['index']: item for item in job['selection_metadata'] if item['index'] in job['selection_files']}
+        for item in files:
+            if item.get('index') not in chosen or any(item.get(key) != chosen[item['index']][key] for key in ('name', 'size')):
+                raise ValueError('Bestand hoort niet bij de bevestigde keuze.')
+        if not selected_complete(files, job['selection_files']):
+            raise ValueError('De gekozen bestanden zijn nog niet volledig gedownload.')
     root = Path(job['local_dir']).resolve()
     candidates = []
     for f in files:
@@ -388,10 +423,10 @@ def import_media(job, files):
                 base = title + suffix if suffix or path.stem == main.stem else path.stem
             name = title + '/' + clean_name(base) + path.suffix.lower()
         else:
-            match = re.search(r'(?i)S(\d{1,3})[ ._-]*E(\d{1,3})((?:E\d{1,3})*)', path.stem)
-            if match:
-                season, episode = int(match[1]), int(match[2])
-                extra = match[3].upper()
+            season, episodes = episode_info(path.name)
+            if episodes:
+                episode = episodes[0]
+                extra = ''.join(f'E{value:02d}' for value in episodes[1:])
             elif job['season'] is not None and job['episode'] is not None and len(videos) == 1:
                 season, episode, extra = job['season'], job['episode'], ''
             else:
@@ -436,16 +471,137 @@ class Worker:
     def enqueue(self, data):
         with self.lock:
             job = new_job(self.store.settings(), data)
-            for existing in self.store.jobs():
+            existing_jobs = self.store.jobs()
+            for existing in existing_jobs:
                 if job['torrent_fingerprint'] == existing.get('torrent_fingerprint', existing['link']):
                     raise ValueError('Deze download staat al in PlexPort.')
+            matches = title_conflicts(existing_jobs, job)
+            confirmed = data.get('confirmed_conflicts', [])
+            if not isinstance(confirmed, list) or any(not isinstance(value, str) for value in confirmed):
+                raise ValueError('Bevestig de gevonden taken met hun taak-ID; een algemene overschrijving is niet toegestaan.')
+            if any(match['id'] not in confirmed for match in matches):
+                raise APIConflict('Deze titel staat al in je PlexPort-geschiedenis. Bevestig de andere versie om verder te gaan.',
+                                  'title_conflict', matches=matches)
             require_storage(job['config'], job['kind'], job['expected_bytes'])
             self.store.save_job(job)
             return public_job(job)
 
+    def preflight(self, data):
+        kind = data.get('kind', 'movie')
+        if kind not in ('movie', 'tv'):
+            raise ValueError('Kies film of serie.')
+        config = self.store.settings()
+        selection = data.get('selection_requested', False)
+        if type(selection) is not bool or (selection and kind != 'tv'):
+            raise ValueError('Afleveringen kiezen is alleen beschikbaar voor series.')
+        expected = download_size(data.get('expected_bytes', 0))
+        report = storage_report(config, kind, 0 if selection else expected)
+        report['import_capability'] = import_capability(config, kind, 0 if selection else expected)
+        if selection:
+            report['torrent_expected_bytes'] = expected
+            report['warnings'].append('De grootte van je gekozen afleveringen wordt gecontroleerd zodra je de bestandskeuze bevestigt.')
+        with self.lock:
+            report['title_conflicts'] = title_conflicts(self.store.jobs(), title_candidate(data)) if data.get('title') else []
+        return report
+
     def downloader(self, job):
         config = current_downloader(job['config']['downloader'], self.store.settings()['downloader'])
         return client(config)
+
+    def _selection_status(self, job, status, downloader):
+        """Persist metadata once ready, and stop downloading until an explicit choice."""
+        if not status.get('metadata_ready'):
+            if job.get('selection_state') == 'committed':
+                job['selection_restore_committed'] = True
+            job['selection_state'] = 'waiting_metadata'
+            return False
+        same_download_dir(status.get('save_dir', ''), job['remote_dir'])
+        current = identities(status.get('all_files'))
+        token = metadata_token(job['torrent_id'], current)
+        previous = job.get('selection_metadata_token')
+        if job.get('selection_state') == 'committed' or job.pop('selection_restore_committed', False):
+            if token != previous:
+                if job.get('import_started'):
+                    raise ValueError('Bestandsmetadata is veranderd nadat de import begon. Herstel de oorspronkelijke bestandsnamen in de downloader en probeer opnieuw; de bevestigde keuze en gepubliceerde media zijn behouden.')
+                job.update(selection_state='awaiting_selection', selection_files=[], selection_error='Bestandsmetadata is veranderd. Kies en bevestig de afleveringen opnieuw.')
+            else:
+                job['selection_state'] = 'committed'
+                return True
+        if token != previous or job.get('selection_state') in ('waiting_metadata', 'applying'):
+            # Persist the import block before a downloader action that can fail.
+            job.update(selection_state='awaiting_selection', selection_metadata=current,
+                       selection_metadata_token=token, selection_files=[])
+            self.store.save_job(job)
+            downloader.action(job['torrent_id'], 'pause')
+            job.update(paused=True, speed=0, activity='paused', selection_paused=True)
+        elif not status.get('paused'):
+            downloader.action(job['torrent_id'], 'pause')
+            job.update(paused=True, speed=0, activity='paused', selection_paused=True)
+        return False
+
+    def files(self, job_id):
+        with self.lock:
+            job = self.store.job(job_id)
+            if not job.get('selection_requested'):
+                raise ValueError('Voor deze taak is afleveringen kiezen niet ingeschakeld.')
+            files = []
+            if job.get('torrent_id'):
+                c = self.downloader(job)
+                status = c.status(job['torrent_id'])
+                self._selection_status(job, status, c)
+                if status.get('metadata_ready'):
+                    files = describe_files(status['all_files'], job.get('selection_files', []))
+                self.store.save_job(job)
+            return {'ok': True, 'id': job_id, 'state': job['selection_state'],
+                    'metadata_token': job.get('selection_metadata_token', ''), 'files': files,
+                    'error': job.get('selection_error', ''),
+                    'warning': 'Magnetmetadata ophalen kan peers contacteren en kort gegevens overdragen. PlexPort pauzeert zodra de bestandslijst beschikbaar is.'}
+
+    def select(self, job_id, indices, token):
+        with self.lock:
+            job = self.store.job(job_id)
+            if not job.get('selection_requested') or not job.get('torrent_id'):
+                raise ValueError('Wacht tot deze taak bestandsmetadata heeft.')
+            if (job.get('files_imported') or job.get('import_started')
+                    or any(job.get(key) in ('importing', 'scan_pending', 'done')
+                           for key in ('state', 'retry_state', 'resume_state'))):
+                raise ValueError('De import is al gestart. De bestandskeuze kan niet meer worden gewijzigd.')
+            c = self.downloader(job)
+            status = c.status(job['torrent_id'])
+            self._selection_status(job, status, c)
+            self.store.save_job(job)
+            if not status.get('metadata_ready'):
+                raise APIConflict('De downloader wacht nog op bestandsmetadata. Probeer straks opnieuw.', 'metadata_waiting')
+            if not isinstance(token, str) or token != job.get('selection_metadata_token'):
+                raise APIConflict('De bestandslijst is veranderd. Vernieuw de lijst en kies opnieuw.', 'metadata_changed')
+            chosen = validate_selection(status['all_files'], indices, job)
+            selected_bytes = sum(item['size'] for item in chosen)
+            remaining_bytes = sum(item['size'] - int(item['size'] * item['progress']) for item in chosen)
+            require_storage(job['config'], job['kind'], remaining_bytes)
+            job.update(selection_state='applying', selection_error='')
+            self.store.save_job(job)
+            try:
+                c.action(job['torrent_id'], 'pause')
+                c.select_files(job['torrent_id'], [item['index'] for item in chosen], job['remote_dir'], token)
+            except Exception as error:
+                job.update(selection_state='awaiting_selection', selection_error=friendly_error(error))
+                self.store.save_job(job)
+                raise
+            job.update(selection_state='committed', selection_files=[item['index'] for item in chosen],
+                       selection_metadata=identities(status['all_files']), selection_metadata_token=token,
+                       selection_episodes=[{key: item[key] for key in ('index', 'name', 'season', 'episodes')} for item in chosen],
+                       selected_bytes=selected_bytes, expected_bytes=selected_bytes, selection_error='')
+            # Save the confirmed choice before resuming; a failed resume is recoverable.
+            self.store.save_job(job)
+            if job['state'] not in ('stopped', 'error') and not job.get('selection_user_paused'):
+                try:
+                    c.action(job['torrent_id'], 'resume')
+                    job.update(paused=False, selection_paused=False, activity='unknown')
+                except Exception as error:
+                    job.update(state='stopped', resume_state='downloading', paused=True, speed=0, activity='paused',
+                               selection_error='Bestandskeuze bewaard. Hervat de taak om door te gaan: ' + friendly_error(error))
+                self.store.save_job(job)
+            return {**public_job(job), 'ok': True, 'metadata_token': token, 'state': 'committed', 'job_state': job['state']}
 
     def step(self, job):
         state = job['state']
@@ -475,15 +631,44 @@ class Worker:
                 raise ValueError('qBittorrent heeft geen nieuwe taak aangemaakt. De torrent bestaat mogelijk al; controleer qBittorrent.')
             self.store.save_job(job)
         elif state == 'downloading':
-            status = self.downloader(job).status(job['torrent_id'])
+            c = self.downloader(job)
+            status = c.status(job['torrent_id'])
             job.update({k: status[k] for k in ('progress', 'speed', 'eta', 'paused')})
             job['activity'] = status.get('activity', 'paused' if status['paused'] else 'downloading')
-            if status['complete']:
+            if job.get('selection_requested'):
+                committed = self._selection_status(job, status, c)
+                if committed:
+                    chosen = [item for item in status['all_files'] if item['index'] in job['selection_files']]
+                    total = sum(item['size'] for item in chosen)
+                    job['progress'] = sum(item['size'] * item['progress'] for item in chosen) / total if total else 0
+                    # Overall torrent progress includes unwanted files and cannot prove this.
+                    if (selected_complete(status['all_files'], job['selection_files'])
+                            and job['activity'] not in ('checking', 'moving', 'metadata', 'allocating')):
+                        job.update(files=chosen, state='importing', speed=0)
+            elif status['complete']:
                 job['files'] = status['files']
                 job['state'] = 'importing'
                 job['speed'] = 0
             self.store.save_job(job)
         elif state == 'importing':
+            if job.get('selection_requested'):
+                c = self.downloader(job)
+                status = c.status(job['torrent_id'])
+                if not self._selection_status(job, status, c):
+                    job['state'] = 'downloading'
+                    self.store.save_job(job)
+                    return
+                if (not selected_complete(status['all_files'], job['selection_files'])
+                        or status.get('activity') in ('checking', 'moving', 'metadata', 'allocating')):
+                    job['state'] = 'downloading'
+                    self.store.save_job(job)
+                    return
+                job['files'] = [item for item in status['all_files'] if item['index'] in job['selection_files']]
+            job['import_started'] = True
+            self.store.save_job(job)
+            job['import_capability'] = import_capability(job['config'], job['kind'], job.get('selected_bytes', job.get('expected_bytes', 0)))
+            # The capability is advisory. Per-file copy checks below account for already
+            # published files on retries, while preserving existing library content.
             job['files_imported'] = import_media(job, job['files'])
             job['state'] = 'scan_pending' if job['config']['plex'].get('url') and job['config']['plex'].get('token') else 'done'
             job['scan_requested'] = False
@@ -541,7 +726,9 @@ class Worker:
                         c.remove(job['torrent_id'], delete_files, job['remote_dir'])
                     self.store.delete_job(job_id)
                     return {'removed': True, 'id': job_id, 'files_deleted': delete_files and c is not None, 'forgotten': forget}
-                if c:
+                resume_blocked = (action == 'resume' and job.get('selection_requested')
+                                  and job.get('selection_state') in ('awaiting_selection', 'applying'))
+                if c and not resume_blocked:
                     c.action(job['torrent_id'], 'pause' if action == 'stop' else 'resume')
                 if action == 'stop':
                     if job['state'] != 'stopped':
@@ -551,7 +738,9 @@ class Worker:
                     restored = job.pop('resume_state', 'downloading' if job.get('torrent_id') else 'queued')
                     if restored == 'queued' and job.get('torrent_id'):
                         restored = 'downloading'
-                    job.update(state=restored, paused=False, activity='queued' if restored == 'queued' else 'unknown')
+                    job.update(state=restored, paused=resume_blocked, activity='paused' if resume_blocked else 'queued' if restored == 'queued' else 'unknown')
+                    if job.get('selection_requested') and not resume_blocked:
+                        job['selection_error'] = ''
             elif action == 'retry':
                 if job['state'] != 'error':
                     raise ValueError('Deze download heeft geen fout om opnieuw te proberen.')
@@ -574,8 +763,13 @@ class Worker:
                     job['config'] = current
                     job.update(task_paths(current['downloader'], job_id))
             elif action in ('pause', 'resume') and job['state'] == 'downloading':
-                self.downloader(job).action(job['torrent_id'], action)
-                job['paused'] = action == 'pause'
+                blocked = (action == 'resume' and job.get('selection_requested')
+                           and job.get('selection_state') in ('awaiting_selection', 'applying'))
+                if not blocked:
+                    self.downloader(job).action(job['torrent_id'], action)
+                job['paused'] = action == 'pause' or blocked
+                if job.get('selection_requested'):
+                    job['selection_user_paused'] = action == 'pause'
             else:
                 raise ValueError('Deze actie is niet beschikbaar voor deze download.')
             self.store.save_job(job)

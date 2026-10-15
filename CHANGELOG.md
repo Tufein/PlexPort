@@ -1,5 +1,13 @@
 # What's new?
 
+## Website/server 1.7.0 — October 15, 2026
+
+- Before adding another version, PlexPort warns about matching titles in its current task history and distinguishes earlier imports from active or stopped downloads. Known different years and episodes remain separate. Missing identity information is described as uncertain. Continuing requires an explicit confirmation; identical torrents remain blocked, including simultaneous requests.
+- Download preflight tries an actual hardlink between the configured download and media folders. It explains whether the video can reuse existing data, a copy needs extra storage, or the method is unknown. Known-size copy estimates account for shared storage without adding independent free-space readings. Checks reserve no space and the import still checks actual capacity.
+- TV downloads can opt in to **Zelf afleveringen en bestanden kiezen (Choose episodes and files)**. After metadata arrives, choose supported videos and matching subtitles. Multiple episodes in one video remain one file. The selection is checked against the downloader's current file identities and saved across restart, stop/resume and retry. PlexPort imports only selected completed files.
+- Metadata acquisition may contact peers and receive data before selection. Once metadata is ready the managed torrent waits for the user's choice. Existing tasks keep their current download behavior.
+- The server update supplies these controls to the website and the existing signed Android APK 1.2.0. No new native APK is included and no real NAS or physical phone deployment is implied.
+
 ## Website/server 1.6.0 — October 13, 2026
 
 - **Downloads** now brings active, stopped, problem and imported tasks together, with status tabs and a shared search. The imported view retains file paths and **Plex laten scannen (Ask Plex to scan)**. Existing `#library` links open that view.
@@ -10,12 +18,12 @@
 - Signing in from the main server URL now reloads the app when the destination URL is unchanged, retaining the selected view.
 - These website changes also appear in the existing Android WebView after updating its server. Publishing server source does not confirm that a NAS or phone has been updated.
 
-## Use PlexPort away from home — Unreleased
+## Use PlexPort away from home — Included in 1.6.0
 
 - A new [Tailscale guide](docs/START-REMOTE.md) explains how to reach PlexPort from your phone or another computer without opening router ports. No server or Android update is needed.
 - The guide has not yet been tested on a real NAS or phone.
 
-## Search by actor — Unreleased
+## Search by actor — Included in 1.6.0
 
 - Choose **Op acteur (By actor)** in **Ontdekken (Discover)** and type a name such as `Tom Hanks`. PlexPort asks your WatchSoMuch source and keeps films that credit that person in their cast list, so title matches with other people are left out.
 - Results show the first names of the cast. Actor search uses WatchSoMuch only, returns at most the first eight matching titles, and does not use `*` or `?`. Other sources are skipped.

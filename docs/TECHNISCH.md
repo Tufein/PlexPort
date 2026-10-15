@@ -117,3 +117,29 @@ Adding a task checks the folders again. The worker also rechecks a task that has
 The known size from a selected search result is used to reject a download larger than the space currently available. Manual links and torrent files do not have a known size in advance in this version. If hardlinks are unavailable, the copy step also checks free space in the media folder.
 
 Activity from qBittorrent or Transmission is saved separately from import status. Checking, preparing, waiting, moving and downloading have distinct messages. qBittorrent tasks that are moving files, checking or fetching metadata are not imported, even if progress shows 100%.
+
+## Title warnings, import estimates and file selection (1.7.0)
+
+`POST /api/preflight` accepts title, kind, year, season, episode, expected bytes
+and the optional `selection_requested` TV flag. It keeps folder results separate
+from `import_capability` and `title_conflicts`. Choosing a season's files leaves
+the size unknown until metadata and the selection are available.
+
+Task creation checks current history again while holding the worker lock.
+A `409 title_conflict` response lists public matching tasks; callers must supply
+those exact IDs in `confirmed_conflicts` to continue. A new concurrent match
+requires another explicit confirmation. Identical fingerprints remain rejected.
+The warning is limited to current PlexPort history, not the complete Plex catalog.
+
+For opt-in TV tasks, `POST /api/files` with a task ID returns metadata, original
+file indices and a metadata token. `POST /api/select` submits that token and chosen
+indices. Both downloader adapters verify the original server, save location,
+file identity and resulting priorities. TV episode identity and selected indices
+are persisted; completion is checked per selected file immediately before import.
+An unavailable or changed metadata snapshot blocks import. Once import has begun,
+including a partial import followed by an error, its selection cannot be changed.
+Metadata acquisition can contact peers and transfer data before confirmation.
+
+Use the downgrade precautions in [Updating a NAS](UPDATING-NAS.md) before running
+an older runtime with unfinished selection tasks. The database needs no schema
+migration; job records remain JSON and existing jobs keep their previous behavior.

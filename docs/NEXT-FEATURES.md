@@ -1,14 +1,16 @@
-# Next feature proposals
+# Feature behavior and next proposals
 
 [Roadmap](../ROADMAP.md) · [Developer handoff](../CLAUDE.md) · [Technical guide](TECHNISCH.md)
 
-These are proposed implementation briefs, not available features. Website 1.5 already includes saved search preferences and wildcard search, so those do not need rebuilding. The priorities below come from an audit of the current code and its NAS, downloader and Plex workflow. External tools inform the ideas; the acceptance criteria are proposals for PlexPort.
+The first three briefs below are implemented in website/server 1.7.0. Their acceptance criteria record the intended safeguards. Tests use local downloader fixtures and temporary media folders; a physical NAS or Android end-to-end download is not claimed. Later ideas remain proposals.
+
+The warning checks current PlexPort history rather than the entire Plex library. Link capability is a current filesystem observation, not a promise or space reservation. Episode selection is opt-in for TV tasks and supports qBittorrent and Transmission; acquiring metadata may contact peers and receive data. Selected subtitle files must match a selected video. Existing jobs do not enter this workflow automatically.
 
 ## 1. Warn before downloading a title again
 
-**User outcome:** choosing a second version of a film shows “This title is already in your downloads” or “This title has already been imported,” with a link to that task and an explicit choice to continue.
+**User outcome:** choosing a second version of a film shows “This title is already in your downloads” or “This title has already been imported,” with a button to that task and an explicit choice to continue.
 
-**Current behavior:** `server.py` rejects an identical download fingerprint. It does not recognize the same film supplied through another link or release. `publish_file()` protects existing destination files, but that happens after a download and is not a useful early warning.
+**Behavior before 1.7.0:** `server.py` rejects an identical download fingerprint. It does not recognize the same film supplied through another link or release. `publish_file()` protects existing destination files, but that happens after a download and is not a useful early warning.
 
 Acceptance criteria:
 
@@ -27,7 +29,7 @@ Validation: test capitalization and spacing, different years, missing years, sep
 
 **User outcome:** before starting a known-size download, show either “Your media can reuse the downloaded video” or “Importing may need about X GB extra,” with a simple explanation. A missing check displays “Import method unknown.”
 
-**Current behavior:** `storage_report()` tests write access and current free space. `publish_file()` tries a hardlink and falls back to a copy when necessary. The current preflight does not establish whether hardlinks between the actual download and destination folders work.
+**Behavior before 1.7.0:** `storage_report()` tests write access and current free space. `publish_file()` tries a hardlink and falls back to a copy when necessary. The current preflight does not establish whether hardlinks between the actual download and destination folders work.
 
 Acceptance criteria:
 
@@ -47,7 +49,7 @@ The [Sonarr quick-start guide](https://wiki.servarr.com/sonarr/quick-start-guide
 
 **User outcome:** after torrent metadata becomes available, show recognizable episodes with checkboxes. The user can select the episodes they need and see which files will be imported.
 
-**Current behavior:** the integrations read torrent file metadata, and `import_media()` recognizes episode codes such as `S01E01`. PlexPort does not expose an episode-selection step. Adding file selection must not make a partially downloaded, unwanted file eligible for import.
+**Behavior before 1.7.0:** the integrations read torrent file metadata, and `import_media()` recognizes episode codes such as `S01E01`. PlexPort does not expose an episode-selection step. Adding file selection must not make a partially downloaded, unwanted file eligible for import.
 
 Acceptance criteria:
 

@@ -17,7 +17,7 @@ import urllib.parse
 import webbrowser
 
 from . import __version__
-from .core import Store, Worker, defaults, friendly_error, public_job, public_settings, storage_report
+from .core import APIConflict, Store, Worker, defaults, friendly_error, public_job, public_settings, storage_report
 from .integrations import client, plex_scan, plex_sections, search_source
 from .posters import PosterCache
 from .search import prepare_query, filter_results
@@ -203,7 +203,7 @@ def create_server(host, port, store, password=''):
                         notice = 'Wildcards worden toegepast op de versies die je bronnen teruggeven. Een brede zoekopdracht kan titels missen; gebruik dan meer letters.' if prepared['wildcard'] else ''
                     self.send({'results': results[:250], 'errors': errors, 'search': {'wildcard': prepared['wildcard'], 'notice': notice}})
                 else:
-                    names = {'/': 'index.html', '/app.js': 'app.js', '/jobs.js': 'jobs.js', '/artwork.js': 'artwork.js', '/discovery.js': 'discovery.js', '/theme.js': 'theme.js', '/style.css': 'style.css', '/favicon.svg': 'favicon.svg', '/plexport.apk': 'plexport.apk'}
+                    names = {'/': 'index.html', '/app.js': 'app.js', '/jobs.js': 'jobs.js', '/artwork.js': 'artwork.js', '/discovery.js': 'discovery.js', '/selection.js': 'selection.js', '/theme.js': 'theme.js', '/style.css': 'style.css', '/favicon.svg': 'favicon.svg', '/plexport.apk': 'plexport.apk'}
                     filename = names.get(parsed.path)
                     if not filename:
                         self.send({'error': 'Niet gevonden.'}, 404)
@@ -275,10 +275,11 @@ def create_server(host, port, store, password=''):
                     self.send(worker.action(str(data.get('id', '')), str(data.get('action', '')),
                                             data.get('delete_files', False), data.get('forget', False)))
                 elif self.path == '/api/preflight':
-                    kind = data.get('kind', 'movie')
-                    if kind not in ('movie', 'tv'):
-                        raise ValueError('Kies film of serie.')
-                    self.send(storage_report(store.settings(), kind, data.get('expected_bytes', 0)))
+                    self.send(worker.preflight(data))
+                elif self.path == '/api/files':
+                    self.send(worker.files(str(data.get('id', ''))))
+                elif self.path == '/api/select':
+                    self.send(worker.select(str(data.get('id', '')), data.get('files'), data.get('metadata_token')))
                 elif self.path == '/api/test':
                     target = data.get('target')
                     config = store.settings()
@@ -312,6 +313,8 @@ def create_server(host, port, store, password=''):
                     self.send({'message': 'Plex-bibliotheekscan aangevraagd.'})
                 else:
                     self.send({'error': 'Niet gevonden.'}, 404)
+            except APIConflict as e:
+                self.send({'error': friendly_error(e), 'code': e.code, **e.details}, 409)
             except Exception as e:
                 self.send({'error': friendly_error(e)}, 400)
 

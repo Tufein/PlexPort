@@ -22,7 +22,8 @@ PlexPort puts completed videos in the right media folder.
 - **Find and choose.** Filter by Full HD, 4K, file size and the number of people sharing a file.
 - **Follow downloads and imports.** Switch between active, stopped, problem and imported tasks in one overview. Stop or resume a download and understand why it is waiting. Remove unwanted tasks, with an optional choice to delete downloaded files.
 - **Organize movies and shows.** Completed videos and subtitles go to your chosen Plex folders.
-- **Catch problems early.** Check connections and folders with one button. See available space before starting a download.
+- **Catch problems early.** Check connections and folders with one button. See title-history warnings and whether importing may need extra storage.
+- **Choose episodes.** Optionally select videos and matching subtitles from a TV torrent after its file information arrives. Imports wait for your confirmed choice.
 - **Use your phone.** The Android app opens the same PlexPort server and the same downloads.
 - **Choose your look.** A modern layout with light, dark or your device's setting.
 - **Sign in easily.** A dedicated welcome screen on the website and Android app, with a password visibility option.

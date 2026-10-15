@@ -4,6 +4,7 @@ function hydrate(root=document){root.querySelectorAll('[data-icon]').forEach(el=
 const $=s=>document.querySelector(s);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 let settings=null,status={jobs:[],checks:{},configured_sources:0},results=[],currentPage='overview',sourceDraft=[],pollBusy=false,toastTimer,searchKind='movie',preflightGeneration=0,downloadFilter='all',settingsBusy=false;
+let titleMatches=[],preflightTimer,filesSnapshot=null,filesTimer,filesLoading=null,filesGeneration=0,filesSubmitting=null;
 const pages={overview:'Overzicht',search:'Ontdekken',downloads:'Downloads',settings:'Instellingen'};
 async function api(path,data){
   const response=await fetch('/api/'+path,{method:data===undefined?'GET':'POST',headers:{'X-PlexPort':'1',...(data===undefined?{}:{'Content-Type':'application/json'})},...(data===undefined?{}:{body:JSON.stringify(data)})});
@@ -28,7 +29,7 @@ const bytes=n=>{if(!n)return'0 B';const units=['B','KB','MB','GB','TB'];const i=
 const eta=n=>n<0||n>8640000?'Tijd onbekend':n<60?'Minder dan een minuut':n<3600?Math.ceil(n/60)+' min':Math.floor(n/3600)+' u '+Math.ceil(n%3600/60)+' min';
 function empty(name,title,description,button=''){return`<div class="empty"><span>${icon(name)}</span><h3>${esc(title)}</h3><p>${esc(description)}</p>${button}</div>`;}
 function artwork(title,year,kind){return `<div class="media-artwork" data-artwork-title="${esc(title)}" data-artwork-year="${esc(year||'')}" data-artwork-kind="${kind==='tv'?'tv':'movie'}"><span class="artwork-placeholder" aria-hidden="true">${icon(kind==='tv'?'tv':'film')}<small>${kind==='tv'?'Serie':'Film'}</small></span><img alt="Poster van ${esc(title)}" width="80" height="120" decoding="async" hidden><a class="artwork-credit" target="_blank" rel="noopener noreferrer" hidden>Bron ↗</a></div>`;}
-function jobRow(job){const labels={queued:'In wachtrij',downloading:job.paused?'Gepauzeerd':activityLabel(job.activity),importing:'Importeren',scan_pending:'Plex-scan aanvragen',done:'Geïmporteerd',stopped:'Gestopt',error:'Aandacht nodig'};let details='';const imported=PlexPortJobs.hasImports(job);if(imported){details=`<p class="file-path">${esc(job.scan_requested?'Plex-scan aangevraagd':job.state==='scan_pending'?'Plex-scan volgt':job.state==='error'?'Plex-scan niet gelukt':'In je mediamap · automatisch scannen instellen in Plex')}<br>${(job.files_imported||[]).slice(0,3).map(esc).join('<br>')}${job.files_imported?.length>3?'<br>+ '+(job.files_imported.length-3)+' bestanden':''}</p>`;}else if(job.state!=='error'){details=`<div class="progress-track" role="progressbar" aria-label="Downloadvoortgang" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(Math.max(0,Math.min(1,job.progress))*100)}"><div data-progress="${Math.round(Math.max(0,Math.min(1,job.progress))*100)}"></div></div><div class="progress-caption"><span>${Math.round(job.progress*100)}%${job.speed?' · '+bytes(job.speed)+'/s':''}</span><span>${job.state==='downloading'&&!job.paused&&(!job.activity||job.activity==='downloading')?eta(job.eta):''}</span></div>`;}const actions=(job.state==='stopped'?`<button data-action="resume" data-id="${esc(job.id)}">Hervatten</button>`:`<button data-action="stop" data-id="${esc(job.id)}">Stoppen</button>`)+(job.state==='error'?`<button data-action="retry" data-id="${esc(job.id)}">Opnieuw proberen</button>`:'')+`<button class="danger-text" data-action="remove" data-id="${esc(job.id)}">Verwijderen</button>`;return`<article class="job-row">${artwork(job.title,job.year,job.kind)}<div class="job-body"><div class="job-top"><div class="job-title">${esc(job.title)}${job.year?' ('+esc(job.year)+')':''}</div><span class="status-pill ${job.state==='done'?'good':job.state==='error'?'bad':''}">${labels[job.state]||esc(job.state)}</span></div><div class="job-meta">${job.kind==='tv'?'Serie':'Film'} · ${esc(job.source)} · ${new Date(job.created*1000).toLocaleDateString('nl-BE',{day:'numeric',month:'short'})}</div>${details}${job.state==='downloading'&&!job.paused&&activityNote(job.activity)?`<p class="hint activity-note">${esc(activityNote(job.activity))}</p>`:''}${job.error?`<div class="job-error">${esc(job.error)}</div>`:''}${actions?'<div class="job-actions">'+actions+'</div>':''}</div></article>`;}
+function jobRow(job){const labels={awaiting_selection:'Kies afleveringen',queued:'In wachtrij',downloading:job.paused?'Gepauzeerd':activityLabel(job.activity),importing:'Importeren',scan_pending:'Plex-scan aanvragen',done:'Geïmporteerd',stopped:'Gestopt',error:'Aandacht nodig'};let details='';const imported=PlexPortJobs.hasImports(job);if(imported){details=`<p class="file-path">${esc(job.scan_requested?'Plex-scan aangevraagd':job.state==='scan_pending'?'Plex-scan volgt':job.state==='error'?'Plex-scan niet gelukt':'In je mediamap · automatisch scannen instellen in Plex')}<br>${(job.files_imported||[]).slice(0,3).map(esc).join('<br>')}${job.files_imported?.length>3?'<br>+ '+(job.files_imported.length-3)+' bestanden':''}</p>`;}else if(job.state!=='error'){details=`<div class="progress-track" role="progressbar" aria-label="Downloadvoortgang" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(Math.max(0,Math.min(1,job.progress))*100)}"><div data-progress="${Math.round(Math.max(0,Math.min(1,job.progress))*100)}"></div></div><div class="progress-caption"><span>${Math.round(job.progress*100)}%${job.speed?' · '+bytes(job.speed)+'/s':''}</span><span>${job.state==='downloading'&&!job.paused&&(!job.activity||job.activity==='downloading')?eta(job.eta):''}</span></div>`;}const actions=(job.selection_requested&&['waiting_metadata','awaiting_selection'].includes(job.selection_state)?`<button class="primary" data-files="${esc(job.id)}">${job.selection_state==='waiting_metadata'?'Bestandsinformatie bekijken':'Afleveringen kiezen'}</button>`:'')+(job.state==='stopped'?`<button data-action="resume" data-id="${esc(job.id)}">Hervatten</button>`:`<button data-action="stop" data-id="${esc(job.id)}">Stoppen</button>`)+(job.state==='error'?`<button data-action="retry" data-id="${esc(job.id)}">Opnieuw proberen</button>`:'')+`<button class="danger-text" data-action="remove" data-id="${esc(job.id)}">Verwijderen</button>`;return`<article class="job-row" data-job-id="${esc(job.id)}">${artwork(job.title,job.year,job.kind)}<div class="job-body"><div class="job-top"><div class="job-title">${esc(job.title)}${job.year?' ('+esc(job.year)+')':''}</div><span class="status-pill ${job.state==='done'?'good':job.state==='error'?'bad':''}">${labels[job.state]||esc(job.state)}</span></div><div class="job-meta">${job.kind==='tv'?'Serie':'Film'} · ${esc(job.source)} · ${new Date(job.created*1000).toLocaleDateString('nl-BE',{day:'numeric',month:'short'})}</div>${details}${job.selection_requested&&job.selection_state!=='committed'?'<p class="hint">'+(job.selection_state==='waiting_metadata'?'Bestandsinformatie ophalen. Er kan al data binnenkomen; de import wacht op jouw keuze.':'De import wacht op je bestandskeuze. Kies afleveringen om door te gaan.')+'</p>':''}${job.state==='downloading'&&!job.paused&&activityNote(job.activity)?`<p class="hint activity-note">${esc(activityNote(job.activity))}</p>`:''}${job.error?`<div class="job-error">${esc(job.error)}</div>`:''}${job.selection_error?`<div class="job-error">${esc(job.selection_error)}</div>`:''}${actions?'<div class="job-actions">'+actions+'</div>':''}</div></article>`;}
 function renderStatus(){
   const jobs=status.jobs,totals=PlexPortJobs.counts(jobs);
   $('#stat-active').textContent=totals.active;$('#nav-count').textContent=totals.active;
@@ -91,8 +92,8 @@ async function saveSettings(){
   return settings;
 }
 
-function addDialog(result=null){const form=$('#add-form');form.reset();$('#add-error').textContent='';form.elements.kind.value=result?.kind||'movie';form.elements.title.value=result?.library_title||result?.title||'';form.elements.year.value=result?.year??'';form.elements.season.value=result?.season??'';form.elements.episode.value=result?.episode??'';form.elements.link.value=result?.link||'';form.dataset.source=result?.source||'Handmatig';form.dataset.expectedBytes=String(result?.size||0);updateKind();$('#add-dialog').showModal();checkDownload();setTimeout(()=>form.elements.title.focus(),20);}
-function updateKind(){const tv=$('#add-form').elements.kind.value==='tv';$('#episode-fields').hidden=!tv;$('#tv-hint').hidden=!tv;}
+function addDialog(result=null){const form=$('#add-form');form.reset();titleMatches=[];$('#title-warning').hidden=true;$('#confirm-title').checked=false;$('#add-error').textContent='';form.elements.kind.value=result?.kind||'movie';form.elements.title.value=result?.library_title||result?.title||'';form.elements.year.value=result?.year??'';form.elements.season.value=result?.season??'';form.elements.episode.value=result?.episode??'';form.elements.link.value=result?.link||'';form.dataset.source=result?.source||'Handmatig';form.dataset.expectedBytes=String(result?.size||0);updateKind();$('#add-dialog').showModal();checkDownload();setTimeout(()=>form.elements.title.focus(),20);}
+function updateKind(){const tv=$('#add-form').elements.kind.value==='tv';$('#episode-fields').hidden=!tv;$('#tv-hint').hidden=!tv;$('#selection-choice').hidden=!tv;if(!tv)$('#add-form').elements.selection_requested.checked=false;}
 async function fileBase64(file){if(file.size>8*1024*1024)throw Error('Torrentbestand te groot. Maximaal 8 MB.');const bytes=new Uint8Array(await file.arrayBuffer());let text='';for(let i=0;i<bytes.length;i+=32768)text+=String.fromCharCode(...bytes.subarray(i,i+32768));return btoa(text);}
 function downloaderHint(){const form=$('#settings-form'),qb=form.elements['downloader.type'].value==='qbittorrent';form.elements['downloader.url'].placeholder=qb?'http://NAS-adres:8080':'http://transmission:9091/transmission/rpc';}
 
@@ -181,15 +182,88 @@ function resetFilters(){
 function folderResults(report){
   return report.folders.map(folder=>`<div class="folder-check"><span class="status-pill ${folder.ok?'good':'bad'}">${folder.ok?'✓':'!'}</span><div><b>${esc(folder.label)}</b><small>${esc(folder.message)}${folder.free!==null?' · '+bytes(folder.free)+' vrij':''}</small></div></div>`).join('');
 }
+function downloadDraft(){
+  const form=$('#add-form');
+  return {kind:form.elements.kind.value,title:form.elements.title.value,year:form.elements.year.value,
+    season:form.elements.season.value,episode:form.elements.episode.value,
+    expected_bytes:Number(form.dataset.expectedBytes||0),selection_requested:form.elements.selection_requested.checked};
+}
+function showTitleConflicts(matches){
+  const signature=items=>items.map(item=>item.id).sort().join(',');
+  if(signature(titleMatches)!==signature(matches))$('#confirm-title').checked=false;
+  titleMatches=matches;
+  $('#title-warning').hidden=!matches.length;
+  $('#title-matches').innerHTML=matches.map(match=>`<div class="existing-title"><b>${esc(match.title)}${match.year?' ('+esc(match.year)+')':''}</b><span>${match.imported?'Al geïmporteerd':{stopped:'Gestopt',error:'Aandacht nodig',queued:'In wachtrij',done:'Geïmporteerd'}[match.state]||'Al in je downloads'}${match.certainty==='possible'?' · mogelijke overeenkomst':''}</span><p class="hint">${esc(match.message||({season_pack:'Een seizoenspakket kan deze aflevering bevatten.',missing_episode:'Afleveringsinformatie ontbreekt; controleer de bestaande taak.',missing_year:'Het jaar ontbreekt; de titel is mogelijk dezelfde.',ambiguous_title:'De titel is niet eenduidig.'}[match.reason]||'De titel en bekende gegevens komen overeen.'))}</p><button class="text-button" type="button" data-existing-task="${esc(match.id)}">Bekijk bestaande taak</button></div>`).join('');
+}
 async function checkDownload(){
   const generation=++preflightGeneration;
-  const form=$('#add-form');$('#download-preflight').textContent='Mappen en vrije ruimte controleren…';
+  $('#download-preflight').textContent='Mappen, opslag en eerdere taken controleren…';
   try{
-    const report=await api('preflight',{kind:form.elements.kind.value,expected_bytes:Number(form.dataset.expectedBytes||0)});
-    if(generation!==preflightGeneration)return;
-    $('#download-preflight').innerHTML=`<h3>Voor je start${report.expected_bytes?' · '+bytes(report.expected_bytes):''}</h3>${folderResults(report)}${report.warnings.map(message=>`<p class="hint">${esc(message)}</p>`).join('')}<p class="hint">${esc(report.note)}</p>`;
+    const report=await api('preflight',downloadDraft());
+    if(generation!==preflightGeneration||!$('#add-dialog').open)return;
+    showTitleConflicts(report.title_conflicts||[]);
+    const capability=report.import_capability;
+    const storage=capability?`<section class="import-estimate"><h3>Ruimte bij het importeren</h3><p>${esc(capability.message)}</p>${capability.additional_bytes>0?`<p>Geschatte extra ruimte: <b>${bytes(capability.additional_bytes)}</b>. De oorspronkelijke download blijft beschikbaar om te delen.</p>`:''}${capability.space_message?`<p class="${capability.space_ok===false?'form-error':'hint'}">${esc(capability.space_message)}</p>`:''}<details><summary>Hoe controleren we dit?</summary><p class="hint">${esc(capability.note)}</p></details></section>`:'';
+    $('#download-preflight').innerHTML=`<h3>Voor je start${report.expected_bytes?' · '+bytes(report.expected_bytes):''}</h3>${folderResults(report)}${storage}${report.warnings.map(message=>`<p class="hint">${esc(message)}</p>`).join('')}<p class="hint">${esc(report.note)}</p>`;
   }catch(error){if(generation===preflightGeneration)$('#download-preflight').textContent=error.message;}
 }
+function invalidateDownload(){
+  preflightGeneration++;clearTimeout(preflightTimer);titleMatches=[];$('#title-warning').hidden=true;$('#confirm-title').checked=false;
+  preflightTimer=setTimeout(checkDownload,350);
+}
+function closeFiles(){if(filesSubmitting===filesGeneration)return;clearTimeout(filesTimer);filesGeneration++;filesSnapshot=null;filesSubmitting=null;$('#files-dialog').close();}
+async function loadFiles(){
+  if(filesLoading===filesGeneration||filesSubmitting===filesGeneration||!$('#files-dialog').open)return;
+  const generation=filesGeneration;filesLoading=generation;filesSnapshot=null;$('#files-submit').disabled=true;clearTimeout(filesTimer);$('#files-error').textContent='';
+  const jobId=$('#files-form').dataset.id;
+  try{
+    const snapshot=await api('files',{id:jobId});
+    if(generation!==filesGeneration||!$('#files-dialog').open||$('#files-form').dataset.id!==jobId)return;
+    filesSnapshot=snapshot;
+    const ready=snapshot.state==='awaiting_selection';
+    $('#files-note').textContent=snapshot.state==='waiting_metadata'?'De bestandsinformatie is nog niet beschikbaar. Je downloader kan nu delers benaderen en data ontvangen. Er wordt pas geïmporteerd nadat je kiest.':snapshot.state==='committed'?'Je bestandskeuze is opgeslagen. Alleen die bestanden komen voor import in aanmerking.':'Je downloader wacht op je keuze. Kies minstens één video; alleen gekozen, voltooide bestanden worden geïmporteerd.';
+    $('#files-list').innerHTML=(snapshot.files||[]).map(file=>`<label class="torrent-file"><input type="checkbox" name="selected_file" value="${file.index}" ${file.selected?'checked':''} ${!ready||!file.selectable?'disabled':''}><span><b>${esc(file.name)}</b><small>${esc(PlexPortSelection.fileDescription(file))} · ${bytes(file.size)}${file.progress>=0?' · '+Math.round(file.progress*100)+'%':''}</small></span></label>`).join('');
+    $('#files-submit').disabled=!ready;
+    if(snapshot.error)$('#files-error').textContent=snapshot.error;
+    if(snapshot.state==='waiting_metadata')filesTimer=setTimeout(()=>{if(generation===filesGeneration)loadFiles();},3000);
+  }catch(error){if(generation===filesGeneration&&$('#files-dialog').open)$('#files-error').textContent=error.message;}
+  finally{if(generation===filesGeneration)filesLoading=null;}
+}
+function openFiles(id){
+  const job=status.jobs.find(job=>job.id===id);if(!job)return;
+  filesGeneration++;filesSubmitting=null;filesSnapshot=null;$('#files-form').querySelectorAll('button').forEach(button=>button.disabled=false);$('#files-form').dataset.id=id;$('#files-title').textContent=job.title;
+  $('#files-list').textContent='Bestandsinformatie controleren…';$('#files-note').textContent='De import wacht op je bevestigde keuze.';$('#files-error').textContent='';$('#files-submit').disabled=true;
+  $('#files-dialog').showModal();loadFiles();
+}
+for(const id of ['files-close','files-cancel'])$('#'+id).addEventListener('click',closeFiles);
+$('#files-dialog').addEventListener('close',()=>{if(!$('#files-dialog').open){clearTimeout(filesTimer);filesGeneration++;filesSnapshot=null;filesSubmitting=null;}});
+$('#files-dialog').addEventListener('cancel',event=>{if(filesSubmitting===filesGeneration)event.preventDefault();});
+$('#files-reload').addEventListener('click',loadFiles);
+$('#files-form').addEventListener('submit',async event=>{
+  event.preventDefault();if(filesLoading===filesGeneration||filesSubmitting===filesGeneration)return;const generation=filesGeneration,button=$('#files-submit');
+  const controls=[...$('#files-form').querySelectorAll('button,input')].map(control=>[control,control.disabled]);
+  const values=[...$('#files-list').querySelectorAll('input:checked')].map(input=>input.value);
+  let data;try{data=PlexPortSelection.selectionPayload(filesSnapshot,values);}catch(error){$('#files-error').textContent=error.message;return;}
+  filesSubmitting=generation;controls.forEach(([control])=>control.disabled=true);$('#files-error').textContent='';
+  try{
+    const saved=await api('select',data);
+    if(generation!==filesGeneration)return;
+    filesSubmitting=null;closeFiles();toast(saved.selection_error?'Je keuze is opgeslagen, maar hervatten is niet gelukt. Open de taak en kies Hervatten.':(saved.job_state||saved.state)==='stopped'?'Bestandskeuze opgeslagen. De taak blijft gestopt tot je Hervatten kiest.':'Bestandskeuze opgeslagen. Je download gaat verder.',Boolean(saved.selection_error));await refresh();
+  }catch(error){
+    if(generation!==filesGeneration)return;
+    $('#files-error').textContent=error.message;if(error.report?.code==='metadata_changed'){filesSubmitting=null;await loadFiles();if(generation===filesGeneration&&!$('#files-error').textContent)$('#files-error').textContent='De bestandslijst is veranderd. Controleer de vernieuwde lijst en kies opnieuw.';}
+  }finally{
+    if(generation===filesGeneration){filesSubmitting=null;controls.forEach(([control,disabled])=>control.disabled=disabled);button.disabled=filesSnapshot?.state!=='awaiting_selection';}
+  }
+});
+document.addEventListener('click',event=>{
+  const filesButton=event.target.closest('[data-files]');if(filesButton)openFiles(filesButton.dataset.files);
+  const existing=event.target.closest('[data-existing-task]');if(existing){
+    $('#add-dialog').close();downloadFilter='all';$('#download-query').value='';navigate('downloads');
+    const row=[...document.querySelectorAll('#all-jobs [data-job-id]')].find(row=>row.dataset.jobId===existing.dataset.existingTask);
+    if(row){row.tabIndex=-1;row.focus();row.scrollIntoView({block:'center'});}
+  }
+});
 function connectionReport(target,report){
   const title={downloader:'Downloader',storage:'Mediamappen',plex:'Plex'}[target];
   const sections=report.sections?.length?`<p class="hint">${report.sections.map(section=>esc(section.id)+': '+esc(section.title)+' ('+esc(section.type)+')').join(' · ')}</p>`:'';
@@ -251,8 +325,8 @@ document.addEventListener('click',async event=>{
 });
 $('#save-top').addEventListener('click',()=>runConnectionTests());$('#settings-form').addEventListener('submit',event=>{event.preventDefault();runConnectionTests();});$('#add-source').addEventListener('click',()=>{captureSources();sourceDraft.push({id:crypto.getRandomValues(new Uint8Array(16)).reduce((id,byte)=>id+byte.toString(16).padStart(2,'0'),''),name:'',url:''});renderSources();$('#source-fields').lastElementChild.querySelector('input').focus();});
 $('#add-watchsomuch').addEventListener('click',()=>{captureSources();if(sourceDraft.some(s=>s.type==='watchsomuch')){toast('WatchSoMuch is al toegevoegd.');return;}sourceDraft.push({id:crypto.getRandomValues(new Uint8Array(16)).reduce((id,byte)=>id+byte.toString(16).padStart(2,'0'),''),type:'watchsomuch',name:'WatchSoMuch',url:'https://watchsomuch.to'});renderSources();});
-$('#close-dialog').addEventListener('click',()=>$('#add-dialog').close());$('#cancel-dialog').addEventListener('click',()=>$('#add-dialog').close());$('#add-form').addEventListener('change',event=>{if(event.target.name==='kind'){updateKind();checkDownload();}});$('#add-form').elements.link.addEventListener('input',()=>{$('#add-form').dataset.expectedBytes='0';});$('#add-form').elements.link.addEventListener('change',checkDownload);$('#add-form').elements.torrent.addEventListener('change',event=>{if(event.target.files.length){$('#add-form').elements.link.value='';$('#add-form').dataset.expectedBytes='0';checkDownload();}});
-$('#add-form').addEventListener('submit',async event=>{event.preventDefault();const form=event.target,button=$('#add-submit');button.disabled=true;$('#add-error').textContent='';try{const data=Object.fromEntries(new FormData(form));delete data.torrent;data.source=form.dataset.source;data.expected_bytes=Number(form.dataset.expectedBytes||0);if(form.elements.torrent.files[0]){data.metainfo=await fileBase64(form.elements.torrent.files[0]);data.link='';}await api('jobs',data);$('#add-dialog').close();toast('Download toegevoegd. Je kunt de voortgang hier volgen.');downloadFilter='active';navigate('downloads');await refresh();}catch(e){$('#add-error').textContent=e.message;}finally{button.disabled=false;}});
+$('#add-dialog').addEventListener('cancel',event=>{if($('#add-submit').disabled)event.preventDefault();});$('#close-dialog').addEventListener('click',()=>{if(!$('#add-submit').disabled)$('#add-dialog').close();});$('#cancel-dialog').addEventListener('click',()=>{if(!$('#add-submit').disabled)$('#add-dialog').close();});$('#add-form').addEventListener('change',event=>{if(event.target.name==='kind')updateKind();if(['kind','title','year','season','episode','selection_requested'].includes(event.target.name))invalidateDownload();});$('#add-form').addEventListener('input',event=>{if(['title','year','season','episode'].includes(event.target.name))invalidateDownload();});$('#add-form').elements.link.addEventListener('input',()=>{$('#add-form').dataset.expectedBytes='0';});$('#add-form').elements.link.addEventListener('change',checkDownload);$('#add-form').elements.torrent.addEventListener('change',event=>{if(event.target.files.length){$('#add-form').elements.link.value='';$('#add-form').dataset.expectedBytes='0';checkDownload();}});
+$('#add-form').addEventListener('submit',async event=>{event.preventDefault();const form=event.target,button=$('#add-submit');button.disabled=true;$('#add-error').textContent='';try{const data=Object.fromEntries(new FormData(form));delete data.torrent;data.source=form.dataset.source;data.expected_bytes=Number(form.dataset.expectedBytes||0);data.selection_requested=form.elements.selection_requested.checked;data.confirmed_conflicts=$('#confirm-title').checked?titleMatches.map(match=>match.id):[];if(titleMatches.length&&!$('#confirm-title').checked){$('#confirm-title').focus();throw Error('Controleer de bestaande titel en kies bewust of je met deze versie wilt doorgaan.');}if(form.elements.torrent.files[0]){data.metainfo=await fileBase64(form.elements.torrent.files[0]);data.link='';}await api('jobs',data);$('#add-dialog').close();toast('Download toegevoegd. Je kunt de voortgang hier volgen.');downloadFilter='active';navigate('downloads');await refresh();}catch(e){if(e.report?.code==='title_conflict'){showTitleConflicts(e.report.matches||[]);$('#confirm-title').checked=false;}$('#add-error').textContent=e.message;}finally{button.disabled=false;}});
 $('#search-form').addEventListener('submit',async event=>{
   event.preventDefault();
   const button=$('#search-button');button.disabled=true;
