@@ -95,3 +95,11 @@ For a new TV task, enable **Zelf afleveringen en bestanden kiezen (Choose episod
 In Downloads, choose **Afleveringen kiezen (Choose episodes)**. Select at least one supported video and explicitly select any matching subtitles. Check original filenames and episode numbers. A video containing several episodes stays one file and is never split. **Keuze opslaan en downloaden (Save selection and download)** applies the selection to this task's torrent. Only selected files that have completed can be imported. **Later kiezen (Choose later)** keeps the import waiting.
 
 If metadata changes, reload the file list and confirm again. Stopping, restarting or retrying a task retains the saved selection. Downloads created before this opt-in keep their existing behavior.
+
+## Add more search sources
+
+In Settings, use **YTS toevoegen (Add YTS)** for movies and **EZTV toevoegen (Add EZTV)** for TV, then **Opslaan & controleren (Save & check)**. WatchSoMuch remains available for films, TV and actor searches. These direct sources need no API key. Torznab still connects to your own Prowlarr or Jackett setup. See [source details](SOURCES.md) for provider limits and TVmaze metadata attribution.
+
+A title card shows one **Aanbevolen (Recommended)** release and a **Downloaden (Download)** button. Your quality, size, seeders and source filters apply first. The recommendation prioritizes seeders, then image quality; ties favor known smaller files and stable release order. Changing the display sort does not replace that rule. It does not promise speed or availability.
+
+Open **Andere kwaliteit of versie kiezen (Choose another quality or version)** to see all eligible releases and choose one yourself. Both buttons open the normal download-confirmation window. Nothing downloads until you confirm **Download starten (Start download)** there.

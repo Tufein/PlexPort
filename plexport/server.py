@@ -21,6 +21,7 @@ from .core import APIConflict, Store, Worker, defaults, friendly_error, public_j
 from .integrations import client, plex_scan, plex_sections, search_source
 from .posters import PosterCache
 from .search import prepare_query, filter_results
+from .sources import supports
 
 STATIC = Path(__file__).parent / 'static'
 
@@ -187,6 +188,11 @@ def create_server(host, port, store, password=''):
                         sources = [source for source in sources if source.get('type') == 'watchsomuch']
                         if not sources:
                             raise ValueError('Zoeken op acteurs werkt met de WatchSoMuch-bron. Voeg die toe bij Instellingen.')
+                    else:
+                        sources = [source for source in sources if supports(source, kind)]
+                        if not sources:
+                            raise ValueError('Voeg een geschikte bron voor films toe, zoals YTS of WatchSoMuch.' if kind == 'movie' else
+                                             'Voeg een geschikte bron voor series toe, zoals EZTV of WatchSoMuch.')
                     results, errors = [], []
                     with ThreadPoolExecutor(max_workers=5) as pool:
                         futures = {pool.submit(search_source, source, prepared['term'], kind, *(('actor',) if mode == 'actor' else ())): source for source in sources}
@@ -201,7 +207,8 @@ def create_server(host, port, store, password=''):
                         notice = 'Gezocht op acteur in WatchSoMuch. Je ziet films waarin de naam bij de hoofdrollen staat; de bron geeft een beperkt aantal titels terug.'
                     else:
                         notice = 'Wildcards worden toegepast op de versies die je bronnen teruggeven. Een brede zoekopdracht kan titels missen; gebruik dan meer letters.' if prepared['wildcard'] else ''
-                    self.send({'results': results[:250], 'errors': errors, 'search': {'wildcard': prepared['wildcard'], 'notice': notice}})
+                    self.send({'results': results[:250], 'errors': errors, 'searched_sources': len(sources),
+                               'search': {'wildcard': prepared['wildcard'], 'notice': notice}})
                 else:
                     names = {'/': 'index.html', '/app.js': 'app.js', '/jobs.js': 'jobs.js', '/artwork.js': 'artwork.js', '/discovery.js': 'discovery.js', '/selection.js': 'selection.js', '/theme.js': 'theme.js', '/style.css': 'style.css', '/favicon.svg': 'favicon.svg', '/plexport.apk': 'plexport.apk'}
                     filename = names.get(parsed.path)

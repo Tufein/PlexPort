@@ -4,7 +4,9 @@
 
 ## Available now
 
-Website/server **1.7.0** adds warnings about titles already in PlexPort history, an observed hardlink/copy space estimate and opt-in TV file selection for qBittorrent and Transmission. Download metadata can contact peers before selection; importing waits for a confirmed choice. These checks do not inspect the full Plex library or reserve disk space.
+Website/server **1.8.0** adds direct YTS movie and EZTV TV sources alongside WatchSoMuch and Torznab. Result cards show one recommended eligible version, with other versions collapsed until opened. Source details and limits are documented in [Search sources](docs/SOURCES.md).
+
+Version 1.7.0 adds warnings about titles already in PlexPort history, an observed hardlink/copy space estimate and opt-in TV file selection for qBittorrent and Transmission. Download metadata can contact peers before selection; importing waits for a confirmed choice. These checks do not inspect the full Plex library or reserve disk space.
 
 Version 1.6.0 consolidates downloads and imports into one overview with status tabs. Settings use **Opslaan & controleren (Save & check)**, preserving checks unaffected by changes. Discover groups versions only when title, year and episode identity are reliable. These features also appear in the existing Android WebView after updating the server.
 

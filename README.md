@@ -9,7 +9,7 @@
 Find a movie or TV show, choose a version and follow the download.
 PlexPort puts completed videos in the right media folder.
 
-[Get started](#get-started) · [How to use it](docs/GEBRUIKEN.md) · [Need help?](docs/HULP.md) · [Download Android app](https://github.com/Tufein/PlexPort/raw/refs/heads/main/android/dist/PlexPort-1.2.0.apk)
+[Get started](#get-started) · [How to use it](docs/GEBRUIKEN.md) · [Search sources](docs/SOURCES.md) · [Need help?](docs/HULP.md) · [Download Android app](https://github.com/Tufein/PlexPort/raw/refs/heads/main/android/dist/PlexPort-1.2.0.apk)
 
 </div>
 
@@ -19,7 +19,7 @@ PlexPort puts completed videos in the right media folder.
 
 ## What can you do with it?
 
-- **Find and choose.** Filter by Full HD, 4K, file size and the number of people sharing a file.
+- **Find and choose.** Search WatchSoMuch, YTS for movies, EZTV for TV or your own Torznab sources. Filter by Full HD, 4K, file size and seeders. Each title shows one recommended download; expand the version list when you want another quality.
 - **Follow downloads and imports.** Switch between active, stopped, problem and imported tasks in one overview. Stop or resume a download and understand why it is waiting. Remove unwanted tasks, with an optional choice to delete downloaded files.
 - **Organize movies and shows.** Completed videos and subtitles go to your chosen Plex folders.
 - **Catch problems early.** Check connections and folders with one button. See title-history warnings and whether importing may need extra storage.

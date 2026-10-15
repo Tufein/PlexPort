@@ -306,6 +306,9 @@ def re_section(value):
 
 
 def search_source(source, query, kind, mode='title'):
+    if source.get('type') in ('yts', 'eztv'):
+        from .sources import search
+        return search(source, query, kind, mode)
     if source.get('type') == 'watchsomuch':
         from .watchsomuch import search
         return search(source, query, kind, mode)

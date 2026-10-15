@@ -20,7 +20,7 @@ import uuid
 REQUIRED = ('__main__.py', 'core.py', 'server.py', 'static/index.html', 'static/app.js')
 RELEASE_REQUIRED = (
     '__init__.py', '__main__.py', 'core.py', 'server.py', 'integrations.py',
-    'watchsomuch.py', 'posters.py', 'search.py', 'duplicates.py', 'storage.py', 'selection.py', 'static/index.html',
+    'watchsomuch.py', 'sources.py', 'posters.py', 'search.py', 'duplicates.py', 'storage.py', 'selection.py', 'static/index.html',
     'static/login.html', 'static/app.js', 'static/login.js', 'static/theme.js',
     'static/artwork.js', 'static/discovery.js', 'static/jobs.js', 'static/selection.js',
     'static/style.css', 'static/favicon.svg',

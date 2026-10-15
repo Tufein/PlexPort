@@ -4,7 +4,7 @@ PlexPort connects a user's search sources and torrent client to their existing P
 
 ## Current state
 
-- Website/server source: **1.7.0**, adding title-history warnings, observed hardlink/copy estimates and opt-in episode/file selection for qBittorrent and Transmission. The unified task/import view, grouped versions, actor/wildcard search and saved preferences remain available. `/api/status` reports the running server version.
+- Website/server source: **1.8.0**, adding direct YTS movie and EZTV TV sources, one recommended download per filtered title and collapsed manual version lists. Title-history warnings, observed hardlink/copy estimates and opt-in episode/file selection remain available. The unified task/import view, grouped versions, actor/wildcard search and saved preferences remain available. `/api/status` reports the running server version.
 - Published Android APK: **1.2.0**, `versionCode` **3**, package `nl.plexport.app`. Native source for the next upgrade is **1.3.0**, `versionCode` **4**; publish it only after building with the existing private signing key and verifying certificate compatibility. The WebView loads the website from the user's server. A source update does not prove that the user's NAS has been updated.
 - The Android release build, signature, URL tests and lint have passed. The personal build was installed in an isolated emulator, but native screen rendering and a physical phone flow have not been validated. Do not describe those as completed checks.
 - Consult [CHANGELOG.md](CHANGELOG.md), [ROADMAP.md](ROADMAP.md), [next feature briefs](docs/NEXT-FEATURES.md) and [technical guide](docs/TECHNISCH.md). Future proposals are not implemented merely because they appear there.
@@ -18,7 +18,8 @@ The backend uses Python 3.11+ and only the standard library; no Python dependenc
 | `plexport/server.py` | HTTP routes, authentication, sessions, API and static files |
 | `plexport/core.py` | SQLite settings/jobs, persistent worker, validation and safe media imports |
 | `plexport/integrations.py` | qBittorrent, Transmission, Torznab and Plex APIs |
-| `plexport/watchsomuch.py` | Direct source search and magnet resolution |
+| `plexport/watchsomuch.py` | WatchSoMuch search and magnet resolution |
+| `plexport/sources.py` | Fixed-provider YTS/EZTV adapters, bounded caching and TVmaze identity lookup |
 | `plexport/posters.py` | Optional exact-match artwork with bounded caching |
 | `plexport/search.py` | Validated wildcard queries and local filtering of source results |
 | `plexport/static/` | User interface, filters, artwork, login and themes |
@@ -48,6 +49,8 @@ The backend uses Python 3.11+ and only the standard library; no Python dependenc
 **Before downloading:** title warnings check current PlexPort tasks only. Known different years and episodes stay separate. Confirm the current matching task IDs explicitly; this never bypasses identical-torrent protection. A filesystem probe tests real linking between the configured folders. Its space estimate is an observation, not a reservation, and cleanup failures report an unknown method.
 
 **Episode selection:** opt-in TV tasks wait for trustworthy file metadata and a committed choice before importing. Metadata acquisition can contact peers and transfer data. Validate file identities and indices against a current metadata token before changing priorities; use only the task's original downloader and paths. Require one supported video, explicitly selected matching subtitles and completion of every selected file. Preserve choices through restart, stop/resume and retry. Existing tasks retain their previous behavior.
+
+**Sources and recommendations:** direct providers use fixed validated HTTPS endpoints. YTS supports movies, EZTV supports TV through a conservative TVmaze-to-IMDb lookup; actor search remains WatchSoMuch-only. Credit TVmaze metadata in the UI. Do not interpret a source timeout or blocked response as an empty catalog. New sources are opt-in and existing source secrets are preserved. Recommend only an eligible filtered release, retain its exact original index/link, and keep the add confirmation with history and storage checks.
 
 ## Verification
 

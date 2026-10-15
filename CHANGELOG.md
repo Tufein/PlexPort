@@ -1,5 +1,13 @@
 # What's new?
 
+## Website/server 1.8.0 — October 15, 2026
+
+- **YTS** adds a direct movie source and **EZTV** adds a direct TV source, both without an API key. EZTV looks up matching shows through TVmaze and requests their IMDb-specific torrents. Settings offers explicit add buttons; existing sources and credentials remain in place.
+- Source requests are bounded, cached briefly and use fixed HTTPS providers. Unavailable sources report errors without discarding successful results from the others. Movie and TV searches skip sources that do not support the chosen category; actor search continues to use WatchSoMuch.
+- Each result card now shows one recommended torrent and a **Downloaden (Download)** button. The recommendation chooses among the versions that pass your filters, prioritizing seeders, then quality, known smaller size and stable input order. It remains a recommendation, not a guarantee of speed or content.
+- Other qualities and versions are collapsed by default under **Andere kwaliteit of versie kiezen (Choose another quality or version)**. Opening the list retains every eligible release and its original link. Both the recommended button and manual choices keep the normal confirmation, space and title-history checks.
+- These changes load through the updated server in the website and existing Android APK 1.2.0. No new native APK is required.
+
 ## Website/server 1.7.0 — October 15, 2026
 
 - Before adding another version, PlexPort warns about matching titles in its current task history and distinguishes earlier imports from active or stopped downloads. Known different years and episodes remain separate. Missing identity information is described as uncertain. Continuing requires an explicit confirmation; identical torrents remain blocked, including simultaneous requests.

@@ -25,6 +25,21 @@
     return rows;
   }
 
+  function recommend(versions) {
+    const qualityRank = { '2160':4, '1080':3, '720':2, sd:1, unknown:0 };
+    const seeders = row => Number.isFinite(Number(row.seeders)) ? Math.max(0, Number(row.seeders)) : 0;
+    const size = row => Number.isFinite(Number(row.size)) && Number(row.size) > 0 ? Number(row.size) : Infinity;
+    const rank = row => qualityRank[row.quality] ?? qualityRank[quality(row.title)];
+    const compare = (a, b) => seeders(b) - seeders(a) || rank(b) - rank(a)
+      || size(a) - size(b) || a.index - b.index;
+    // Only consider the already filtered versions. Return the original row so
+    // the existing confirmation dialog opens its exact provider result/link.
+    return versions.reduce((best, row) => {
+      if (!row || !Number.isSafeInteger(row.index) || row.index < 0) return best;
+      return !best || compare(row, best) < 0 ? row : best;
+    }, null);
+  }
+
   function preferences(value = {}) {
     value = value && typeof value === 'object' ? value : {};
     return {
@@ -102,7 +117,7 @@
     return previous[tokens.length];
   }
 
-  const api = { quality, select, preferences, readPreferences, readFilters, writeFilters, group, matches };
+  const api = { quality, select, recommend, preferences, readPreferences, readFilters, writeFilters, group, matches };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.PlexPortDiscovery = api;
 })(typeof window === 'undefined' ? globalThis : window);

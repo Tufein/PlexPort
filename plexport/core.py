@@ -20,6 +20,7 @@ from .integrations import client, http_url, plex_scan, same_download_dir
 from .duplicates import title_conflicts
 from .selection import describe_files, episode_info, identities, metadata_token, selected_complete, validate_selection
 from .storage import import_capability
+from .sources import SOURCE_PRESETS
 
 VIDEO = {'.mkv', '.mp4', '.m4v', '.avi', '.mov', '.ts', '.webm', '.mpg', '.mpeg'}
 SUBTITLE = {'.srt', '.ass', '.ssa', '.vtt', '.sub', '.idx'}
@@ -163,11 +164,12 @@ def merge_settings(previous, incoming):
             if not name:
                 raise ValueError('Geef iedere bron een naam.')
             source_type = source.get('type', old.get(sid, {}).get('type', 'torznab'))
-            if source_type not in ('torznab', 'watchsomuch'):
+            if source_type not in ('torznab', 'watchsomuch', *SOURCE_PRESETS):
                 raise ValueError('Onbekend brontype.')
-            url = 'https://watchsomuch.to' if source_type == 'watchsomuch' else http_url(str(source.get('url', '')))
+            url = (SOURCE_PRESETS[source_type]['url'] if source_type in SOURCE_PRESETS else
+                   'https://watchsomuch.to' if source_type == 'watchsomuch' else http_url(str(source.get('url', ''))))
             sources.append({'id': sid, 'name': name, 'type': source_type, 'url': url,
-                            'api_key': str(source.get('api_key', old.get(sid, {}).get('api_key', '')))})
+                            'api_key': '' if source_type in SOURCE_PRESETS else str(source.get('api_key', old.get(sid, {}).get('api_key', '')))})
         if len({s['id'] for s in sources}) != len(sources):
             raise ValueError('Dubbele bron-ID.')
         result['sources'] = sources
