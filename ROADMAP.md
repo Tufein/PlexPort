@@ -33,7 +33,7 @@ The first three researched priorities shipped in 1.7.0; their behavior and limit
 | **Completion and problem notifications** | Know when media is imported or a task needs attention. | Ask users which channel they want; avoid repeated alerts and protect channel credentials. A scan request alone does not prove Plex recognized the title. |
 | **Guided TrueNAS setup** | Fewer folder settings and fewer incorrect mounts. | Preserve existing datasets, permissions and media without creating empty replacement folders. |
 | **English app interface** | Use PlexPort without learning Dutch button labels. | Translate controls, status messages and errors consistently, while preserving settings and download behavior. |
-| **Limits for an individual download** | Control how much bandwidth a PlexPort task uses. | Apply supported limits only to the chosen torrent; preserve the downloader's global settings and other torrents. |
+| **Unreleased · Limits for an individual download** | Control how much bandwidth a PlexPort task uses. | Apply supported limits only to the chosen torrent; preserve the downloader's global settings and other torrents. |
 
 ## Research sources
 

@@ -43,3 +43,5 @@ dialog{border:1px solid var(--line);border-radius:18px;padding:28px;width:560px;
 .torrent-file input{width:20px;height:20px;flex-shrink:0;margin-top:3px}.torrent-file span{min-width:0}.torrent-file b{display:block;overflow-wrap:anywhere}.torrent-file small{display:block;color:var(--muted,#64748b);margin-top:5px;font-weight:400}
 #files-dialog{width:min(760px,calc(100% - 24px))}#files-list{max-height:44vh;overflow:auto;margin-top:12px}.job-row:focus{outline:2px solid var(--accent);outline-offset:3px}
 @media(max-width:600px){#files-dialog .dialog-footer{flex-wrap:wrap}#files-submit{flex-basis:100%}.title-warning{padding:14px}}
+
+.limit-choice{display:inline-flex;align-items:center;gap:6px;font-size:11px;color:var(--muted);margin:0}.limit-choice select{width:auto;min-height:36px;padding:6px 8px;font-size:11px}
