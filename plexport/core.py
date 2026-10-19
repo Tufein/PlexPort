@@ -329,6 +329,9 @@ def new_job(config, data):
     return job
 
 
+MAX_DOWNLOAD_LIMIT_MB = 1000
+
+
 def public_job(job):
     return {k: v for k, v in job.items() if k not in {'config', 'metainfo', 'link', 'remote_dir', 'local_dir', 'torrent_fingerprint'}}
 
@@ -707,7 +710,7 @@ class Worker:
             self.tick()
             self.stop.wait(4)
 
-    def action(self, job_id, action, delete_files=False, forget=False):
+    def action(self, job_id, action, delete_files=False, forget=False, download_limit_mb=None):
         if type(delete_files) is not bool or type(forget) is not bool:
             raise ValueError('Ongeldige keuze voor verwijderen.')
         if ((delete_files or forget) and action != 'remove') or (delete_files and forget):
@@ -764,6 +767,13 @@ class Worker:
                 if job['state'] == 'queued' and not submitted:
                     job['config'] = current
                     job.update(task_paths(current['downloader'], job_id))
+            elif action == 'limit':
+                if type(download_limit_mb) is not int or not 0 <= download_limit_mb <= MAX_DOWNLOAD_LIMIT_MB:
+                    raise ValueError('Kies een snelheidslimiet tussen 0 (onbeperkt) en %d MB/s.' % MAX_DOWNLOAD_LIMIT_MB)
+                if job['state'] not in ('downloading', 'stopped') or not job.get('torrent_id'):
+                    raise ValueError('Een snelheidslimiet kan alleen worden ingesteld voor een download die al in je downloader staat.')
+                self.downloader(job).set_download_limit(job['torrent_id'], download_limit_mb * 1_000_000)
+                job['download_limit_mb'] = download_limit_mb
             elif action in ('pause', 'resume') and job['state'] == 'downloading':
                 blocked = (action == 'resume' and job.get('selection_requested')
                            and job.get('selection_state') in ('awaiting_selection', 'applying'))

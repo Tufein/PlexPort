@@ -63,6 +63,40 @@ class DownloadControlsTests(unittest.TestCase):
                 self.worker.action(self.job['id'], 'stop')
                 self.assertEqual(self.worker.action(self.job['id'], 'resume')['state'], state)
 
+    def test_download_limit_applies_only_to_this_torrent_and_persists(self):
+        self.submitted()
+        c = Mock()
+        with patch('plexport.core.client', return_value=c):
+            result = self.worker.action(self.job['id'], 'limit', download_limit_mb=5)
+        c.set_download_limit.assert_called_once_with('a'*40, 5_000_000)
+        c.action.assert_not_called()
+        self.assertEqual(result['download_limit_mb'], 5)
+        self.assertEqual(self.store.job(self.job['id'])['download_limit_mb'], 5)
+
+    def test_download_limit_rejects_bad_values_and_unsubmitted_tasks(self):
+        c = Mock()
+        with patch('plexport.core.client', return_value=c):
+            with self.assertRaises(ValueError):
+                self.worker.action(self.job['id'], 'limit', download_limit_mb=2)  # still queued
+            self.submitted()
+            for bad in (-1, 1001, True, '5', 1.5, None):
+                with self.subTest(bad=bad), self.assertRaises(ValueError):
+                    self.worker.action(self.job['id'], 'limit', download_limit_mb=bad)
+        c.set_download_limit.assert_not_called()
+
+    def test_client_limit_calls_are_scoped_to_one_torrent(self):
+        from plexport.integrations import QBittorrent, Transmission
+        t = Transmission.__new__(Transmission)
+        t.rpc = Mock()
+        t.set_download_limit('a'*40, 5_000_000)
+        t.rpc.assert_called_with('torrent-set', {'ids': ['a'*40], 'downloadLimited': True, 'downloadLimit': 5000})
+        t.set_download_limit('a'*40, 0)
+        t.rpc.assert_called_with('torrent-set', {'ids': ['a'*40], 'downloadLimited': False})
+        q = QBittorrent.__new__(QBittorrent)
+        q.call = Mock()
+        q.set_download_limit('a'*40, 5_000_000)
+        q.call.assert_called_with('torrents/setDownloadLimit', {'hashes': 'a'*40, 'limit': 5_000_000})
+
     def test_recover_torrent_id_before_stop_and_remove(self):
         self.job['add_started'] = True
         self.store.save_job(self.job)
