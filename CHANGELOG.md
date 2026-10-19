@@ -1,6 +1,6 @@
 # What's new?
 
-## Unreleased
+## Website/server 1.9.0 — October 19, 2026
 
 - Downloads that are already in your downloader get a **Snelheid (Speed)** menu to cap that one torrent's download speed (unlimited, 1, 2, 5 or 10 MB/s). It works with qBittorrent and Transmission, changes only the chosen torrent and leaves the downloader's global limits and other torrents alone. The limit is stored with the task. This is covered by local fixture tests; it has not been tried against a real downloader or on a physical phone.
 

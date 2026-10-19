@@ -4,7 +4,7 @@
 
 ## Available now
 
-Website/server **1.8.0** adds direct YTS movie and EZTV TV sources alongside WatchSoMuch and Torznab. Result cards show one recommended eligible version, with other versions collapsed until opened. Source details and limits are documented in [Search sources](docs/SOURCES.md).
+Website/server **1.9.0** adds a per-download speed limit for qBittorrent and Transmission tasks. Version 1.8.0 added direct YTS movie and EZTV TV sources alongside WatchSoMuch and Torznab. Result cards show one recommended eligible version, with other versions collapsed until opened. Source details and limits are documented in [Search sources](docs/SOURCES.md).
 
 Version 1.7.0 adds warnings about titles already in PlexPort history, an observed hardlink/copy space estimate and opt-in TV file selection for qBittorrent and Transmission. Download metadata can contact peers before selection; importing waits for a confirmed choice. These checks do not inspect the full Plex library or reserve disk space.
 
@@ -33,7 +33,7 @@ The first three researched priorities shipped in 1.7.0; their behavior and limit
 | **Completion and problem notifications** | Know when media is imported or a task needs attention. | Ask users which channel they want; avoid repeated alerts and protect channel credentials. A scan request alone does not prove Plex recognized the title. |
 | **Guided TrueNAS setup** | Fewer folder settings and fewer incorrect mounts. | Preserve existing datasets, permissions and media without creating empty replacement folders. |
 | **English app interface** | Use PlexPort without learning Dutch button labels. | Translate controls, status messages and errors consistently, while preserving settings and download behavior. |
-| **Unreleased · Limits for an individual download** | Control how much bandwidth a PlexPort task uses. | Apply supported limits only to the chosen torrent; preserve the downloader's global settings and other torrents. |
+| **Available · Limits for an individual download** | Control how much bandwidth a PlexPort task uses. | Apply supported limits only to the chosen torrent; preserve the downloader's global settings and other torrents. |
 
 ## Research sources
 
