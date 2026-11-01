@@ -201,15 +201,14 @@ test('a stopped task does not claim that saving automatically resumed it', async
   assert.doesNotMatch(app.toasts[0].message, /download gaat verder/i);
 });
 
-test('a submitted task offers a per-download speed menu, a queued one does not', async () => {
+test('a submitted task offers per-download speed limits, a queued one does not', async () => {
   const app = fixture(); await openReady(app);
   const rowStart = source.indexOf('function jobRow(job){');
   vm.runInContext(source.slice(rowStart, source.indexOf('\nfunction renderStatus', rowStart)), app.context);
   const base = {id:'A',title:'A',kind:'movie',year:'2020',state:'downloading',source:'Fixture',created:0,progress:0.2};
-  const queued = app.context.jobRow(base);
-  assert.doesNotMatch(queued, /data-limit-id/);
-  const row = app.context.jobRow({...base, torrent_id:'a'.repeat(40), download_limit_mb:5});
-  assert.match(row, /data-limit-id="A"/);
-  assert.match(row, /<option value="5" selected>/);
-  assert.match(app.context.jobRow({...base, torrent_id:'a'.repeat(40), download_limit_mb:7}), /<option value="7" selected>7 MB\/s/);
+  assert.doesNotMatch(app.context.jobRow(base), /data-limit-form/);
+  const row = app.context.jobRow({...base, torrent_id:'a'.repeat(40), download_limit_mb:7, upload_limit_mb:2});
+  assert.match(row, /data-limit-form="A"/);
+  assert.match(row, /name="download"[^>]*value="7"/);
+  assert.match(row, /name="upload"[^>]*value="2"/);
 });

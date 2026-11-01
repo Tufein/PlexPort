@@ -142,6 +142,13 @@ class Transmission:
             args['downloadLimit'] = max(1, limit // 1000)
         self.rpc('torrent-set', args)
 
+    def set_upload_limit(self, torrent_id, bytes_per_second):
+        limit = int(bytes_per_second)
+        args = {'ids': [single_torrent(torrent_id)], 'uploadLimited': limit > 0}
+        if limit > 0:
+            args['uploadLimit'] = max(1, limit // 1000)
+        self.rpc('torrent-set', args)
+
     def remove(self, torrent_id, delete_files=False, expected_dir=None):
         torrent_id = single_torrent(torrent_id)
         if delete_files:
@@ -265,6 +272,9 @@ class QBittorrent:
     def set_download_limit(self, torrent_id, bytes_per_second):
         # Only this torrent's own limit changes; the global rate settings stay untouched.
         self.call('torrents/setDownloadLimit', {'hashes': single_torrent(torrent_id), 'limit': max(0, int(bytes_per_second))})
+
+    def set_upload_limit(self, torrent_id, bytes_per_second):
+        self.call('torrents/setUploadLimit', {'hashes': single_torrent(torrent_id), 'limit': max(0, int(bytes_per_second))})
 
     def remove(self, torrent_id, delete_files=False, expected_dir=None):
         torrent_id = single_torrent(torrent_id)

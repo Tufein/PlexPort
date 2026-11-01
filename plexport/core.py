@@ -710,7 +710,7 @@ class Worker:
             self.tick()
             self.stop.wait(4)
 
-    def action(self, job_id, action, delete_files=False, forget=False, download_limit_mb=None):
+    def action(self, job_id, action, delete_files=False, forget=False, download_limit_mb=None, upload_limit_mb=None):
         if type(delete_files) is not bool or type(forget) is not bool:
             raise ValueError('Ongeldige keuze voor verwijderen.')
         if ((delete_files or forget) and action != 'remove') or (delete_files and forget):
@@ -768,12 +768,16 @@ class Worker:
                     job['config'] = current
                     job.update(task_paths(current['downloader'], job_id))
             elif action == 'limit':
-                if type(download_limit_mb) is not int or not 0 <= download_limit_mb <= MAX_DOWNLOAD_LIMIT_MB:
+                limits = {'download': download_limit_mb, 'upload': upload_limit_mb}
+                given = {k: v for k, v in limits.items() if v is not None}
+                if not given or any(type(v) is not int or not 0 <= v <= MAX_DOWNLOAD_LIMIT_MB for v in given.values()):
                     raise ValueError('Kies een snelheidslimiet tussen 0 (onbeperkt) en %d MB/s.' % MAX_DOWNLOAD_LIMIT_MB)
                 if job['state'] not in ('downloading', 'stopped') or not job.get('torrent_id'):
                     raise ValueError('Een snelheidslimiet kan alleen worden ingesteld voor een download die al in je downloader staat.')
-                self.downloader(job).set_download_limit(job['torrent_id'], download_limit_mb * 1_000_000)
-                job['download_limit_mb'] = download_limit_mb
+                c = self.downloader(job)
+                for kind, value in given.items():
+                    getattr(c, 'set_%s_limit' % kind)(job['torrent_id'], value * 1_000_000)
+                    job['%s_limit_mb' % kind] = value
             elif action in ('pause', 'resume') and job['state'] == 'downloading':
                 blocked = (action == 'resume' and job.get('selection_requested')
                            and job.get('selection_state') in ('awaiting_selection', 'applying'))
