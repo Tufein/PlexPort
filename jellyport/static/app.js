@@ -367,3 +367,38 @@ document.addEventListener('submit',async event=>{
   catch(error){toast(error.message,true);}
   finally{button.disabled=false;await refresh();}
 });
+
+let existingTorrents=[],existingMatches=[];
+async function openExisting(){
+  const form=$('#existing-form');form.reset();existingMatches=[];$('#existing-warning').hidden=true;$('#existing-error').textContent='';$('#existing-reason').textContent='Downloads uit qBittorrent ophalen…';$('#existing-select').innerHTML='';$('#existing-submit').disabled=true;$('#existing-dialog').showModal();
+  try{
+    const result=await api('existing',{});existingTorrents=result.torrents;
+    $('#existing-select').innerHTML=existingTorrents.length?existingTorrents.map(t=>`<option value="${esc(t.id)}"${t.importable?'':' disabled'}>${esc(t.name)} · ${bytes(t.size)}${t.importable?'':' (niet bereikbaar)'}</option>`).join(''):'<option value="">Geen nieuwe downloads gevonden</option>';
+    $('#existing-reason').textContent=existingTorrents.length?(result.truncated?'Alleen de eerste 300 downloads worden getoond. ':'')+'PlexPort toont geen torrents die al een taak hebben.':'Alle voltooide downloads staan al in PlexPort of er zijn er geen.';
+    selectExisting();
+  }catch(error){$('#existing-reason').textContent='';$('#existing-error').textContent=error.message;}
+}
+function selectExisting(){
+  const torrent=existingTorrents.find(t=>t.id===$('#existing-select').value),form=$('#existing-form');
+  $('#existing-submit').disabled=!torrent||!torrent.importable;
+  $('#existing-reason').textContent=torrent&&!torrent.importable?torrent.reason:$('#existing-reason').textContent;
+  if(torrent&&!form.elements.title.value)form.elements.title.value=torrent.name.replace(/[._]+/g,' ').replace(/\s+(19|20)\d{2}\b.*$/,'').trim().slice(0,180);
+}
+function showExistingMatches(matches){
+  const signature=items=>items.map(item=>item.id).sort().join(',');
+  if(signature(existingMatches)!==signature(matches))$('#existing-confirm').checked=false;
+  existingMatches=matches;$('#existing-warning').hidden=!matches.length;
+  $('#existing-matches').innerHTML=matches.map(match=>`<div class="existing-title"><b>${esc(match.title)}${match.year?' ('+esc(match.year)+')':''}</b><span>${match.imported?'Al geïmporteerd':'Al in je downloads'}</span></div>`).join('');
+}
+document.addEventListener('click',event=>{if(event.target.closest('[data-existing]'))openExisting();if(event.target.closest('#existing-close,#existing-cancel')&&!$('#existing-submit').dataset.busy)$('#existing-dialog').close();});
+$('#existing-select').addEventListener('change',selectExisting);
+$('#existing-form').addEventListener('change',event=>{if(event.target.name==='kind')$('#existing-episodes').hidden=event.target.value!=='tv';});
+$('#existing-form').addEventListener('submit',async event=>{
+  event.preventDefault();const form=event.target,button=$('#existing-submit');button.disabled=true;button.dataset.busy='1';$('#existing-error').textContent='';
+  try{
+    if(existingMatches.length&&!$('#existing-confirm').checked){$('#existing-confirm').focus();throw Error('Controleer de bestaande titel en kies bewust of je met deze versie wilt doorgaan.');}
+    const data=Object.fromEntries(new FormData(form));data.confirmed_conflicts=$('#existing-confirm').checked?existingMatches.map(match=>match.id):[];
+    await api('adopt',data);$('#existing-dialog').close();toast('Download toegevoegd. PlexPort importeert hem naar Plex.');downloadFilter='active';navigate('downloads');await refresh();
+  }catch(error){if(error.report?.code==='title_conflict'){showExistingMatches(error.report.matches||[]);$('#existing-confirm').checked=false;}$('#existing-error').textContent=error.message;}
+  finally{delete button.dataset.busy;button.disabled=false;}
+});

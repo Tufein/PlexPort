@@ -276,6 +276,12 @@ class QBittorrent:
         # Only this torrent's own limit changes; the global rate settings stay untouched.
         self.call('torrents/setDownloadLimit', {'hashes': single_torrent(torrent_id), 'limit': max(0, int(bytes_per_second))})
 
+    def list_completed(self):
+        items = json.loads(self.call('torrents/info?' + urllib.parse.urlencode({'filter': 'completed'})))
+        return [{'id': t['hash'].lower(), 'name': str(t.get('name', '')), 'size': int(t.get('size') or 0),
+                 'save_dir': str(t.get('save_path', '')), 'tags': str(t.get('tags', ''))}
+                for t in items if re.fullmatch(r'[0-9a-fA-F]{40}', str(t.get('hash', '')))]
+
     def set_upload_limit(self, torrent_id, bytes_per_second):
         self.call('torrents/setUploadLimit', {'hashes': single_torrent(torrent_id), 'limit': max(0, int(bytes_per_second))})
 
