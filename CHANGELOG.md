@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- **Meldingen (Notifications)**: Settings has an optional webhook address (for example ntfy or a Discord webhook). PlexPort sends one message per imported title and one per new problem, and a test button. The address is stored like other secrets, is never shown again, and can be cleared. Messages only say files are in your media folder; they do not prove Plex recognized the title. A failed delivery never affects a task, and tasks that finished before you set a webhook are not announced. Covered by local tests; no real webhook service was contacted.
+
 - **Bestaande download importeren (Import an existing download)** lists completed qBittorrent torrents that PlexPort does not manage yet. You confirm the title, and the normal import links or copies the video into your Plex folder. The torrent and its files stay in qBittorrent: stopping the task does not pause the torrent, and deleting downloader files is refused for these tasks. Torrents outside PlexPort's configured download folder (or with a differently spelled path) are listed as unreachable and cannot be imported. The existing title-history warning applies. Only qBittorrent is supported; covered by local fixture tests, not a real downloader.
 
 - The **Snelheid** controls on a task now accept your own download and upload limit in MB/s (0 means unlimited) instead of fixed choices. Both apply only to that torrent in qBittorrent or Transmission and are stored with the task. This is covered by local fixture tests, not by a real downloader or phone.

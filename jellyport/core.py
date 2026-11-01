@@ -20,11 +20,12 @@ from .integrations import client, http_url, jellyfin_scan, same_download_dir
 from .duplicates import title_conflicts
 from .selection import describe_files, episode_info, identities, metadata_token, selected_complete, validate_selection
 from .storage import import_capability
+from . import notifications
 from .sources import SOURCE_PRESETS
 
 VIDEO = {'.mkv', '.mp4', '.m4v', '.avi', '.mov', '.ts', '.webm', '.mpg', '.mpeg'}
 SUBTITLE = {'.srt', '.ass', '.ssa', '.vtt', '.sub', '.idx'}
-SECRETS = {'password', 'token', 'api_key'}
+SECRETS = {'password', 'token', 'api_key', 'webhook_url'}
 DEFAULT_PREFERENCES = {'quality': 'all', 'max_gb': 0, 'min_seeders': 0, 'sort': 'seeders'}
 PREFERENCE_CHOICES = {'quality': ('all', '1080', '720', '2160', 'sd', 'unknown'),
                       'max_gb': (0, 2, 4, 10, 25), 'min_seeders': (0, 1, 5, 20),
@@ -96,6 +97,8 @@ def defaults():
                            'remote_root': os.environ.get('DOWNLOADER_ROOT', downloads), 'local_root': downloads},
             'library': {'movies': str(media / 'Movies'), 'tv': str(media / 'TV Shows')},
             'jellyfin': {'url': '', 'token': '', 'movie_section': '', 'tv_section': ''}, 'sources': [],
+            'plex': {'url': '', 'token': '', 'movie_section': '', 'tv_section': ''},
+            'notifications': {'webhook_url': ''},
             'preferences': DEFAULT_PREFERENCES.copy()}
 
 
@@ -131,7 +134,20 @@ def merge_settings(previous, incoming):
             if type(value) is not expected_type or value not in PREFERENCE_CHOICES[key]:
                 raise ValueError('Ongeldige zoekvoorkeur: ' + key)
             result['preferences'][key] = value
-    for group in ('downloader', 'library', 'jellyfin'):
+    result['notifications'] = {'webhook_url': '', **previous.get('notifications', {})}
+    if 'notifications' in incoming:
+        changes = incoming['notifications']
+        if not isinstance(changes, dict) or set(changes) - {'webhook_url', 'webhook_url_set', 'clear'}:
+            raise ValueError('Ongeldige meldingsinstellingen.')
+        if changes.get('clear') in (True, 'on'):
+            result['notifications']['webhook_url'] = ''
+        elif 'webhook_url' in changes:
+            value = changes['webhook_url']
+            if not isinstance(value, str) or len(value) > 2048:
+                raise ValueError('Ongeldig webhook-adres.')
+            if value.strip():
+                result['notifications']['webhook_url'] = http_url(value.strip())
+    for group in ('downloader', 'library', 'jellyfin', 'plex'):
         for key in previous[group]:
             if key in incoming.get(group, {}):
                 value = incoming[group][key]
@@ -211,9 +227,9 @@ class Store:
             config = json.loads(db.execute('SELECT body FROM settings WHERE id=1').fetchone()[0])
             # Existing databases gain defaults in memory; reading never changes them.
             config['preferences'] = {**DEFAULT_PREFERENCES, **config.get('preferences', {})}
-            # Pre-Jellyfin databases: the old Plex token and section numbers are not reusable, so start empty in memory.
-            config.pop('plex', None)
             config.setdefault('jellyfin', defaults()['jellyfin'])
+            config.setdefault('plex', defaults()['plex'])
+            config['notifications'] = {'webhook_url': '', **config.get('notifications', {})}
             return config
 
     def save_settings(self, incoming):
@@ -782,6 +798,33 @@ class Worker:
                     job['speed'] = 0
                     job['error'] = friendly_error(e)
                     self.store.save_job(job)
+                self.notify(job)
+
+    def notify(self, job):
+        """Send at most one message per completion and per distinct problem; failures never affect the task."""
+        try:
+            url = self.store.settings()['notifications']['webhook_url']
+            if job['state'] == 'error' and job.get('error'):
+                key, title = 'error:' + hashlib.sha256(job['error'].encode()).hexdigest()[:12], 'PlexPort: aandacht nodig'
+                message = job['title'] + ' · ' + job['error']
+            elif job['state'] in ('scan_pending', 'done') and job.get('files_imported'):
+                key, title = 'imported', 'PlexPort: geïmporteerd'
+                message = job['title'] + (f" ({job['year']})" if job.get('year') else '') + ' staat in je mediamap.'
+            else:
+                return
+            notified = job.get('notified', [])
+            if key in notified:
+                return
+            job['notified'] = [*notified, key][-20:]
+            self.store.save_job(job)
+            if url:
+                notifications.send(url, title, message)
+        except Exception as error:
+            job['notify_error'] = friendly_error(error)[:200]
+            try:
+                self.store.save_job(job)
+            except Exception:
+                pass
 
     def run(self):
         while not self.stop.is_set():

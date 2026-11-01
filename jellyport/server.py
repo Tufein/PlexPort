@@ -19,6 +19,8 @@ import webbrowser
 from . import __version__
 from .core import APIConflict, Store, env, Worker, defaults, friendly_error, public_job, public_settings, storage_report
 from .integrations import client, jellyfin_scan, jellyfin_sections, search_source
+from . import notifications
+from .integrations import plex_scan, plex_sections
 from .posters import PosterCache
 from .search import prepare_query, filter_results
 from .sources import supports
@@ -311,7 +313,13 @@ def create_server(host, port, store, password=''):
                                 self.send({'message': failed['message'], **report}, 400)
                                 return
                             extra = {'folders': report['folders'], 'free': min(f['free'] for f in report['folders'])}
-                            message = 'Download- en Jellyfin-mappen zijn bereikbaar'
+                            message = 'Download- en mediamappen zijn bereikbaar'
+                        elif target == 'notifications':
+                            if not config['notifications']['webhook_url']:
+                                raise ValueError('Vul eerst een webhook-adres in en sla het op.')
+                            notifications.send(config['notifications']['webhook_url'], 'JellyPort', 'Dit is een testmelding.')
+                            message = 'Testmelding verstuurd. Controleer of hij is aangekomen.'
+                            extra = {}
                         else:
                             raise ValueError('Onbekende verbinding.')
                         checks[target] = {'ok': True, 'message': message}

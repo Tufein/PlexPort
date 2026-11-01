@@ -81,10 +81,13 @@ function populateSettings(){Object.entries(settings).forEach(([group,values])=>{
 function captureSources(){sourceDraft=[...document.querySelectorAll('.source-row')].map(row=>{const existing=sourceDraft.find(s=>s.id===row.dataset.id)||{};const draft={id:row.dataset.id,type:existing.type||'torznab',name:row.querySelector('[data-source="name"]').value,url:row.querySelector('[data-source="url"]').value,api_key_set:existing.api_key_set};const secret=row.querySelector('[data-source="api_key"]').value;if(secret)draft.api_key=secret;else if(existing.api_key)draft.api_key=existing.api_key;return draft;});}
 function renderSources(){const element=$('#source-fields');element.innerHTML=sourceDraft.length?sourceDraft.map(s=>{const direct=['watchsomuch','yts','eztv'].includes(s.type);return`<div class="source-row" data-id="${esc(s.id)}"><label>Naam<input data-source="name" value="${esc(s.name)}" placeholder="Mijn bron" required></label><label>${direct?'Website':'Torznab-URL'}<input data-source="url" value="${esc(s.url)}" type="url" placeholder="http://server:9696/1/api" ${direct?'readonly':''} required></label><label>${direct?'Rechtstreeks gekoppeld':'API-sleutel'}<input data-source="api_key" type="password" value="${esc(s.api_key||'')}" placeholder="${direct?'Geen API-sleutel nodig':s.api_key_set?'Opgeslagen':'API-sleutel'}" ${direct?'disabled':''} autocomplete="new-password"></label><button type="button" class="icon-button" data-remove-source="${esc(s.id)}" aria-label="Bron verwijderen">×</button></div>`;}).join(''):'<p class="hint">Nog geen bronnen gekoppeld. Je kunt ook rechtstreeks een magnetlink of torrentbestand toevoegen.</p>';}
 
-function collectSettings(){captureSources();const data={downloader:{},library:{},jellyfin:{},sources:sourceDraft.map(s=>{const {api_key_set,...rest}=s;return rest;})};new FormData($('#settings-form')).forEach((value,name)=>{const [group,key]=name.split('.');if(!group||!key)return;if(['password','token'].includes(key)&&!value)return;data[group][key]=value;});return data;}
+function collectSettings(){captureSources();const data={downloader:{},library:{},jellyfin:{},plex:{},notifications:{},sources:sourceDraft.map(s=>{const {api_key_set,...rest}=s;return rest;})};new FormData($('#settings-form')).forEach((value,name)=>{const [group,key]=name.split('.');if(!group||!key)return;if(['password','token','webhook_url'].includes(key)&&!value)return;data[group][key]=value;});return data;}
 async function saveSettings(){
   if(!$('#settings-form').reportValidity())throw Error('Vul de instellingen volledig in.');
   settings=await api('settings',collectSettings());
+  const clearHook=document.querySelector('[name="notifications.clear"]'),hook=document.querySelector('[name="notifications.webhook_url"]');
+  if(clearHook)clearHook.checked=false;
+  if(hook){hook.value='';hook.placeholder=settings.notifications?.webhook_url_set?'Opgeslagen · leeg laten om te behouden':'Bijvoorbeeld een ntfy- of Discord-webhook';}
   status.configured_sources=settings.sources.length;
   populateSettings();
   $('#save-status').textContent='Opgeslagen op je JellyPort-server.';
@@ -272,7 +275,7 @@ document.addEventListener('click',event=>{
   }
 });
 function connectionReport(target,report){
-  const title={downloader:'Downloader',storage:'Mediamappen',jellyfin:'Jellyfin'}[target];
+  const title={downloader:'Downloader',storage:'Mediamappen',jellyfin:'Jellyfin',plex:'Plex',notifications:'Meldingen'}[target];
   const sections=report.sections?.length?`<p class="hint">${report.sections.map(section=>esc(section.id)+': '+esc(section.title)+' ('+esc(section.type)+')').join(' · ')}</p>`:'';
   const folders=report.folders?folderResults(report):report.free!==undefined&&report.free!==null?`<p class="hint">${bytes(report.free)} vrij</p>`:'';
   return`<div class="connection-report"><div class="${report.ok?'notice':'warning'}"><b>${title}</b><span>${esc(report.message||report.error||'Verzoek mislukt.')}</span></div>${sections}${folders}</div>`;
@@ -296,7 +299,7 @@ async function runConnectionTests(selectedTargets=null){
     const targets=selectedTargets||['downloader','storage',...(settings.jellyfin.url&&settings.jellyfin.token_set?['jellyfin']:[])];
     const rows=[];let failed=false;
     for(const target of targets){
-      const title={downloader:'Downloader',storage:'Mediamappen',jellyfin:'Jellyfin'}[target];
+      const title={downloader:'Downloader',storage:'Mediamappen',jellyfin:'Jellyfin',plex:'Plex',notifications:'Meldingen'}[target];
       $('#check-all-result').innerHTML=rows.join('')+`<p class="hint">${title} controleren…</p>`;
       const report=await testConnection(target);failed=failed||!report.ok;
       rows.push(connectionReport(target,report));
