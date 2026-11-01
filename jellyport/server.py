@@ -281,7 +281,7 @@ def create_server(host, port, store, password=''):
                 elif self.path == '/api/action':
                     self.send(worker.action(str(data.get('id', '')), str(data.get('action', '')),
                                             data.get('delete_files', False), data.get('forget', False),
-                                            data.get('download_limit_mb')))
+                                            data.get('download_limit_mb'), data.get('upload_limit_mb')))
                 elif self.path == '/api/preflight':
                     self.send(worker.preflight(data))
                 elif self.path == '/api/files':

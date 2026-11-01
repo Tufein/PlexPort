@@ -1,5 +1,9 @@
 # What's new?
 
+## Unreleased
+
+- The **Snelheid** controls on a task now accept your own download and upload limit in MB/s (0 means unlimited) instead of fixed choices. Both apply only to that torrent in qBittorrent or Transmission and are stored with the task. This is covered by local fixture tests, not by a real downloader or phone.
+
 ## Website/server 2.0.0 — November 3, 2026
 
 - **PlexPort is now JellyPort and uses Jellyfin instead of Plex.** Settings use the Jellyfin address (for example `http://192.168.1.75:8096`), a Jellyfin API key (Dashboard → API Keys) and the movie and TV library IDs, which **Opslaan & Jellyfin testen** lists. After an import JellyPort asks Jellyfin to refresh that library. The old Plex token and section numbers are not reused; enter the Jellyfin details once.

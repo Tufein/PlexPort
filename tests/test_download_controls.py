@@ -73,6 +73,18 @@ class DownloadControlsTests(unittest.TestCase):
         self.assertEqual(result['download_limit_mb'], 5)
         self.assertEqual(self.store.job(self.job['id'])['download_limit_mb'], 5)
 
+    def test_upload_limit_is_independent_and_validated(self):
+        self.submitted()
+        c = Mock()
+        with patch('plexport.core.client', return_value=c):
+            result = self.worker.action(self.job['id'], 'limit', upload_limit_mb=3)
+            with self.assertRaises(ValueError):
+                self.worker.action(self.job['id'], 'limit', download_limit_mb=1, upload_limit_mb=-1)
+        c.set_upload_limit.assert_called_once_with('a'*40, 3_000_000)
+        c.set_download_limit.assert_not_called()
+        self.assertEqual(result['upload_limit_mb'], 3)
+        self.assertNotIn('download_limit_mb', result)
+
     def test_download_limit_rejects_bad_values_and_unsubmitted_tasks(self):
         c = Mock()
         with patch('jellyport.core.client', return_value=c):
@@ -96,6 +108,12 @@ class DownloadControlsTests(unittest.TestCase):
         q.call = Mock()
         q.set_download_limit('a'*40, 5_000_000)
         q.call.assert_called_with('torrents/setDownloadLimit', {'hashes': 'a'*40, 'limit': 5_000_000})
+        q.set_upload_limit('a'*40, 2_000_000)
+        q.call.assert_called_with('torrents/setUploadLimit', {'hashes': 'a'*40, 'limit': 2_000_000})
+        t.set_upload_limit('a'*40, 2_000_000)
+        t.rpc.assert_called_with('torrent-set', {'ids': ['a'*40], 'uploadLimited': True, 'uploadLimit': 2000})
+        t.set_upload_limit('a'*40, 0)
+        t.rpc.assert_called_with('torrent-set', {'ids': ['a'*40], 'uploadLimited': False})
 
     def test_recover_torrent_id_before_stop_and_remove(self):
         self.job['add_started'] = True
