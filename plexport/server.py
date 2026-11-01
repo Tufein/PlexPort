@@ -18,6 +18,7 @@ import webbrowser
 
 from . import __version__
 from .core import APIConflict, Store, Worker, defaults, friendly_error, public_job, public_settings, storage_report
+from . import notifications
 from .integrations import client, plex_scan, plex_sections, search_source
 from .posters import PosterCache
 from .search import prepare_query, filter_results
@@ -312,6 +313,12 @@ def create_server(host, port, store, password=''):
                                 return
                             extra = {'folders': report['folders'], 'free': min(f['free'] for f in report['folders'])}
                             message = 'Download- en Plex-mappen zijn bereikbaar'
+                        elif target == 'notifications':
+                            if not config['notifications']['webhook_url']:
+                                raise ValueError('Vul eerst een webhook-adres in en sla het op.')
+                            notifications.send(config['notifications']['webhook_url'], 'PlexPort', 'Dit is een testmelding.')
+                            message = 'Testmelding verstuurd. Controleer of hij is aangekomen.'
+                            extra = {}
                         else:
                             raise ValueError('Onbekende verbinding.')
                         checks[target] = {'ok': True, 'message': message}
