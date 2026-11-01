@@ -131,7 +131,7 @@ def merge_settings(previous, incoming):
     result['notifications'] = {'webhook_url': '', **previous.get('notifications', {})}
     if 'notifications' in incoming:
         changes = incoming['notifications']
-        if not isinstance(changes, dict) or set(changes) - {'webhook_url', 'clear'}:
+        if not isinstance(changes, dict) or set(changes) - {'webhook_url', 'webhook_url_set', 'clear'}:
             raise ValueError('Ongeldige meldingsinstellingen.')
         if changes.get('clear') in (True, 'on'):
             result['notifications']['webhook_url'] = ''
