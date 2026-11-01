@@ -16,7 +16,7 @@ import urllib.error
 import urllib.parse
 import uuid
 
-from .integrations import client, http_url, jellyfin_scan, same_download_dir
+from .integrations import client, http_url, media_servers, same_download_dir, scan_media_servers
 from .duplicates import title_conflicts
 from .selection import describe_files, episode_info, identities, metadata_token, selected_complete, validate_selection
 from .storage import import_capability
@@ -158,8 +158,9 @@ def merge_settings(previous, incoming):
         raise ValueError('Kies Transmission of qBittorrent.')
     if result['downloader']['url']:
         http_url(result['downloader']['url'])
-    if result['jellyfin']['url']:
-        http_url(result['jellyfin']['url'])
+    for server in ('jellyfin', 'plex'):
+        if result[server]['url']:
+            http_url(result[server]['url'])
     for group, keys in (('downloader', ('local_root',)), ('library', ('movies', 'tv'))):
         for key in keys:
             if not Path(result[group][key]).is_absolute():
@@ -290,17 +291,17 @@ def task_paths(downloader, job_id):
 
 
 def mapped_local_dir(downloader, remote_dir):
-    """Map a downloader save folder to PlexPort's view of it, refusing anything outside the download root."""
+    """Map a downloader save folder to JellyPort's view of it, refusing anything outside the download root."""
     root = str(downloader['remote_root']).replace('\\', '/').rstrip('/')
     remote = str(remote_dir).replace('\\', '/').rstrip('/')
     if not root or not (remote == root or remote.startswith(root + '/')):
-        raise ValueError('Deze torrent staat buiten de downloadmap die PlexPort kent. Pas de mapkoppeling aan of importeer hem niet via PlexPort.')
+        raise ValueError('Deze torrent staat buiten de downloadmap die JellyPort kent. Pas de mapkoppeling aan of importeer hem niet via JellyPort.')
     parts = [part for part in remote[len(root):].split('/') if part]
     if any(part in ('.', '..') for part in parts):
         raise ValueError('Onveilig pad van de bestaande download.')
     local = Path(downloader['local_root']).joinpath(*parts)
     if not local.is_dir():
-        raise ValueError('De map van deze download is niet bereikbaar voor PlexPort: ' + str(local))
+        raise ValueError('De map van deze download is niet bereikbaar voor JellyPort: ' + str(local))
     return str(local)
 
 
@@ -355,7 +356,7 @@ def new_job(config, data):
     else:
         http_url(link)
     sid = uuid.uuid4().hex
-    c = {k: copy.deepcopy(config[k]) for k in ('downloader', 'library', 'jellyfin') if k in config}
+    c = {k: copy.deepcopy(config[k]) for k in ('downloader', 'library', 'jellyfin', 'plex') if k in config}
     job = {'id': sid, **candidate, 'link': link, 'metainfo': metainfo,
             'torrent_fingerprint': hashlib.sha256(binary).hexdigest() if metainfo else link,
             'source': str(data.get('source', 'Handmatig'))[:120], 'config': c, **task_paths(c['downloader'], sid),
@@ -540,7 +541,7 @@ class Worker:
             known = {job.get('torrent_id') for job in self.store.jobs()}
         items = []
         for torrent in listed[:300]:
-            if torrent['id'] in known or any(tag.strip().startswith('plexport-') for tag in torrent['tags'].split(',')):
+            if torrent['id'] in known or any(tag.strip().startswith(('jellyport-', 'plexport-')) for tag in torrent['tags'].split(',')):
                 continue
             try:
                 mapped_local_dir(config['downloader'], torrent['save_dir'])
@@ -563,13 +564,13 @@ class Worker:
             existing_jobs = self.store.jobs()
             fingerprint = 'adopted:' + torrent_id
             if any(job.get('torrent_id') == torrent_id or job.get('torrent_fingerprint') == fingerprint for job in existing_jobs):
-                raise ValueError('Deze download staat al in PlexPort.')
+                raise ValueError('Deze download staat al in JellyPort.')
             status = client(config['downloader']).status(torrent_id)
             if not status['complete']:
                 raise ValueError('Alleen volledig gedownloade torrents kunnen worden geïmporteerd.')
             local_dir = mapped_local_dir(config['downloader'], status['save_dir'])
             sid = uuid.uuid4().hex
-            c = {k: copy.deepcopy(config[k]) for k in ('downloader', 'library', 'plex')}
+            c = {k: copy.deepcopy(config[k]) for k in ('downloader', 'library', 'jellyfin', 'plex')}
             job = {'id': sid, **candidate, 'link': '', 'metainfo': '', 'torrent_fingerprint': fingerprint,
                    'source': 'Bestaande download', 'config': c, 'local_dir': local_dir, 'remote_dir': status['save_dir'],
                    'state': 'downloading', 'torrent_id': torrent_id, 'add_started': True, 'adopted': True,
@@ -580,7 +581,7 @@ class Worker:
             if not isinstance(confirmed, list) or any(not isinstance(value, str) for value in confirmed):
                 raise ValueError('Bevestig de gevonden taken met hun taak-ID; een algemene overschrijving is niet toegestaan.')
             if any(match['id'] not in confirmed for match in matches):
-                raise APIConflict('Deze titel staat al in je PlexPort-geschiedenis. Bevestig de andere versie om verder te gaan.',
+                raise APIConflict('Deze titel staat al in je JellyPort-geschiedenis. Bevestig de andere versie om verder te gaan.',
                                   'title_conflict', matches=matches)
             self.store.save_job(job)
             return public_job(job)
@@ -769,13 +770,13 @@ class Worker:
             # The capability is advisory. Per-file copy checks below account for already
             # published files on retries, while preserving existing library content.
             job['files_imported'] = import_media(job, job['files'])
-            job['state'] = 'scan_pending' if job['config'].get('jellyfin', {}).get('url') and job['config'].get('jellyfin', {}).get('token') else 'done'
+            job['state'] = 'scan_pending' if media_servers(job['config']) else 'done'
             job['scan_requested'] = False
             job['finished'] = time.time()
             self.store.save_job(job)
         elif state == 'scan_pending':
-            # Current Jellyfin credentials/library selection may have been repaired since the download.
-            jellyfin_scan(self.store.settings()['jellyfin'], job['kind'])
+            # Current media server credentials/library selection may have been repaired since the download.
+            scan_media_servers(self.store.settings(), job['kind'])
             job['scan_requested'] = True
             job['state'] = 'done'
             self.store.save_job(job)
@@ -805,10 +806,10 @@ class Worker:
         try:
             url = self.store.settings()['notifications']['webhook_url']
             if job['state'] == 'error' and job.get('error'):
-                key, title = 'error:' + hashlib.sha256(job['error'].encode()).hexdigest()[:12], 'PlexPort: aandacht nodig'
+                key, title = 'error:' + hashlib.sha256(job['error'].encode()).hexdigest()[:12], 'JellyPort: aandacht nodig'
                 message = job['title'] + ' · ' + job['error']
             elif job['state'] in ('scan_pending', 'done') and job.get('files_imported'):
-                key, title = 'imported', 'PlexPort: geïmporteerd'
+                key, title = 'imported', 'JellyPort: geïmporteerd'
                 message = job['title'] + (f" ({job['year']})" if job.get('year') else '') + ' staat in je mediamap.'
             else:
                 return
@@ -839,7 +840,7 @@ class Worker:
         with self.lock:
             job = self.store.job(job_id)
             if delete_files and job.get('adopted'):
-                raise ValueError('Dit bestand stond al in je downloader. Verwijder de torrent en bestanden daar zelf; PlexPort wist ze niet.')
+                raise ValueError('Dit bestand stond al in je downloader. Verwijder de torrent en bestanden daar zelf; JellyPort wist ze niet.')
             if action in ('stop', 'remove') or (action == 'resume' and job['state'] == 'stopped'):
                 c = None
                 if not forget and (job.get('torrent_id') or job.get('add_started')):

@@ -18,9 +18,8 @@ import webbrowser
 
 from . import __version__
 from .core import APIConflict, Store, env, Worker, defaults, friendly_error, public_job, public_settings, storage_report
-from .integrations import client, jellyfin_scan, jellyfin_sections, search_source
+from .integrations import client, jellyfin_sections, media_servers, plex_sections, scan_media_servers, search_source
 from . import notifications
-from .integrations import plex_scan, plex_sections
 from .posters import PosterCache
 from .search import prepare_query, filter_results
 from .sources import supports
@@ -275,8 +274,9 @@ def create_server(host, port, store, password=''):
                         if (previous['library'] != current['library']
                                 or previous['downloader']['local_root'] != current['downloader']['local_root']):
                             checks.pop('storage', None)
-                        if previous['jellyfin'] != current['jellyfin']:
-                            checks.pop('jellyfin', None)
+                        for server in ('jellyfin', 'plex'):
+                            if previous[server] != current[server]:
+                                checks.pop(server, None)
                     self.send(result)
                 elif self.path == '/api/jobs':
                     self.send(worker.enqueue(data), 201)
@@ -305,6 +305,10 @@ def create_server(host, port, store, password=''):
                             sections = jellyfin_sections(config['jellyfin'])
                             message = 'Jellyfin bereikbaar · ' + str(len(sections)) + ' bibliotheken'
                             extra = {'sections': sections}
+                        elif target == 'plex':
+                            sections = plex_sections(config['plex'])
+                            message = 'Plex bereikbaar · ' + str(len(sections)) + ' bibliotheken'
+                            extra = {'sections': sections}
                         elif target == 'storage':
                             report = storage_report(config)
                             failed = next((f for f in report['folders'] if not f['ok']), None)
@@ -329,8 +333,11 @@ def create_server(host, port, store, password=''):
                         checks[target] = {'ok': False, 'message': message}
                         self.send({'ok': False, 'message': message}, 400)
                 elif self.path == '/api/scan':
-                    jellyfin_scan(store.settings()['jellyfin'], data.get('kind', 'movie'))
-                    self.send({'message': 'Jellyfin-bibliotheekscan aangevraagd.'})
+                    settings = store.settings()
+                    if not media_servers(settings):
+                        raise ValueError('Stel eerst Jellyfin of Plex in om te kunnen scannen.')
+                    scan_media_servers(settings, data.get('kind', 'movie'))
+                    self.send({'message': 'Bibliotheekscan aangevraagd.'})
                 else:
                     self.send({'error': 'Niet gevonden.'}, 404)
             except APIConflict as e:

@@ -76,7 +76,7 @@ class DownloadControlsTests(unittest.TestCase):
     def test_upload_limit_is_independent_and_validated(self):
         self.submitted()
         c = Mock()
-        with patch('plexport.core.client', return_value=c):
+        with patch('jellyport.core.client', return_value=c):
             result = self.worker.action(self.job['id'], 'limit', upload_limit_mb=3)
             with self.assertRaises(ValueError):
                 self.worker.action(self.job['id'], 'limit', download_limit_mb=1, upload_limit_mb=-1)

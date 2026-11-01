@@ -3,8 +3,8 @@ import tempfile
 import unittest
 from unittest.mock import Mock, patch
 
-from plexport import notifications
-from plexport.core import Store, Worker, defaults, new_job, public_settings
+from jellyport import notifications
+from jellyport.core import Store, Worker, defaults, new_job, public_settings
 
 HOOK = 'https://ntfy.example/secret-topic'
 
@@ -54,7 +54,7 @@ class NotificationTests(unittest.TestCase):
     def test_import_and_each_distinct_error_notify_once(self):
         self.set_hook()
         job = self.store.job(self.job['id'])
-        with patch('plexport.core.notifications.send') as send:
+        with patch('jellyport.core.notifications.send') as send:
             job.update(state='done', files_imported=['Film (2020)/Film (2020).mkv'])
             self.worker.notify(job)
             self.worker.notify(job)
@@ -71,7 +71,7 @@ class NotificationTests(unittest.TestCase):
         self.set_hook()
         job = self.store.job(self.job['id'])
         job.update(state='done', files_imported=['x.mkv'])
-        with patch('plexport.core.notifications.send', side_effect=ValueError('boom')) as send:
+        with patch('jellyport.core.notifications.send', side_effect=ValueError('boom')) as send:
             self.worker.notify(job)
             self.worker.notify(job)
         self.assertEqual(send.call_count, 1)
@@ -80,7 +80,7 @@ class NotificationTests(unittest.TestCase):
     def test_no_webhook_means_no_request_and_no_backfill(self):
         job = self.store.job(self.job['id'])
         job.update(state='done', files_imported=['x.mkv'])
-        with patch('plexport.core.notifications.send') as send:
+        with patch('jellyport.core.notifications.send') as send:
             self.worker.notify(job)
             self.set_hook()
             self.worker.notify(job)
@@ -93,7 +93,7 @@ class NotificationTests(unittest.TestCase):
         self.assertIn(b'"text"', body)
         body, headers = notifications.payload(HOOK, 'T', 'M')
         self.assertEqual(body, 'T: M'.encode())
-        with patch('plexport.notifications.request') as request:
+        with patch('jellyport.notifications.request') as request:
             notifications.send(HOOK, 'T', 'M')
         self.assertEqual(request.call_args.args[0], HOOK)
 

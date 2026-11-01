@@ -8,7 +8,7 @@ from .integrations import http_url, request
 def payload(url, title, message):
     host = urllib.parse.urlsplit(url).hostname or ''
     text = title + ': ' + message
-    headers = {'User-Agent': 'PlexPort'}
+    headers = {'User-Agent': 'JellyPort'}
     if host in ('discord.com', 'discordapp.com') or host.endswith(('.discord.com', '.discordapp.com')):
         return json.dumps({'content': text}).encode(), {**headers, 'Content-Type': 'application/json'}
     if host == 'hooks.slack.com':

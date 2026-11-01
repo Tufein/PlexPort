@@ -3,7 +3,7 @@ import tempfile
 import unittest
 from unittest.mock import Mock, patch
 
-from plexport.core import APIConflict, Store, Worker, defaults, mapped_local_dir
+from jellyport.core import APIConflict, Store, Worker, defaults, mapped_local_dir
 
 HASH = 'a' * 40
 
@@ -33,7 +33,7 @@ class AdoptTests(unittest.TestCase):
 
     def adopt(self, **extra):
         data = {'id': HASH, 'kind': 'movie', 'title': 'Film', 'year': '2020', **extra}
-        with patch('plexport.core.client', return_value=self.client):
+        with patch('jellyport.core.client', return_value=self.client):
             return self.worker.adopt(data)
 
     def test_mapping_stays_inside_the_download_root(self):
@@ -53,7 +53,7 @@ class AdoptTests(unittest.TestCase):
         self.client.add.assert_not_called()
         self.client.action.assert_not_called()
         # The normal worker path imports it.
-        with patch('plexport.core.client', return_value=self.client):
+        with patch('jellyport.core.client', return_value=self.client):
             self.worker.tick()
             self.worker.tick()
         self.assertTrue(any((self.root/'movies').rglob('*.mkv')))
@@ -81,7 +81,7 @@ class AdoptTests(unittest.TestCase):
 
     def test_stop_and_delete_never_touch_the_users_torrent(self):
         job = self.adopt()
-        with patch('plexport.core.client', return_value=self.client):
+        with patch('jellyport.core.client', return_value=self.client):
             self.worker.action(job['id'], 'stop')
             self.worker.action(job['id'], 'resume')
             with self.assertRaises(ValueError):
@@ -96,10 +96,10 @@ class AdoptTests(unittest.TestCase):
         self.adopt()
         self.client.list_completed.return_value = [
             {'id': HASH, 'name': 'Known', 'size': 1, 'save_dir': '/downloads/Film.2020', 'tags': ''},
-            {'id': 'c' * 40, 'name': 'Ours', 'size': 1, 'save_dir': '/downloads/Film.2020', 'tags': 'plexport-x'},
+            {'id': 'c' * 40, 'name': 'Ours', 'size': 1, 'save_dir': '/downloads/Film.2020', 'tags': 'jellyport-x'},
             {'id': 'd' * 40, 'name': 'Elsewhere', 'size': 1, 'save_dir': '/media/other', 'tags': ''},
             {'id': 'e' * 40, 'name': 'Fine', 'size': 1, 'save_dir': '/downloads/Film.2020', 'tags': 'misc'}]
-        with patch('plexport.core.client', return_value=self.client):
+        with patch('jellyport.core.client', return_value=self.client):
             result = self.worker.existing_downloads()
         ids = {t['id']: t for t in result['torrents']}
         self.assertEqual(set(ids), {'d' * 40, 'e' * 40})

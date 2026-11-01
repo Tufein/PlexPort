@@ -339,6 +339,40 @@ def jellyfin_scan(config, kind):
     request(http_url(config['url']).rstrip('/') + '/Items/' + key + '/Refresh?' + query, data=b'', headers=jellyfin_headers(config))
 
 
+def plex_sections(config):
+    if not config.get('url') or not config.get('token'):
+        raise ValueError('Vul het Plex-adres en je Plex-token in bij Instellingen.')
+    body = request(http_url(config['url']).rstrip('/') + '/library/sections', headers={'X-Plex-Token': config['token']})
+    root = ET.fromstring(body)
+    return [{'id': e.attrib['key'], 'title': e.attrib.get('title', ''), 'type': e.attrib.get('type', '')} for e in root.findall('Directory')]
+
+
+def plex_scan(config, kind):
+    key = config.get('movie_section' if kind == 'movie' else 'tv_section')
+    if not key:
+        raise ValueError('Kies de bijbehorende Plex-bibliotheek bij Instellingen.')
+    if not (isinstance(key, str) and key.isdigit()):
+        raise ValueError('Ongeldig Plex-bibliotheeknummer.')
+    request(http_url(config['url']).rstrip('/') + '/library/sections/' + key + '/refresh', headers={'X-Plex-Token': config['token']})
+
+
+def media_servers(settings):
+    """Names of the configured media servers (address and token present)."""
+    return [name for name in ('jellyfin', 'plex') if settings.get(name, {}).get('url') and settings.get(name, {}).get('token')]
+
+
+def scan_media_servers(settings, kind):
+    """Ask every configured media server to scan; report all failures together."""
+    errors = []
+    for name in media_servers(settings):
+        try:
+            (jellyfin_scan if name == 'jellyfin' else plex_scan)(settings[name], kind)
+        except Exception as e:
+            errors.append(('Jellyfin' if name == 'jellyfin' else 'Plex') + ': ' + str(e))
+    if errors:
+        raise ValueError(' · '.join(errors))
+
+
 def re_section(value):
     return isinstance(value, str) and re.fullmatch(r'[a-fA-F0-9]{32}|[a-fA-F0-9]{8}(-[a-fA-F0-9]{4}){3}-[a-fA-F0-9]{12}', value) is not None
 
