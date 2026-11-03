@@ -1,0 +1,27 @@
+version: "3.7"
+
+services:
+  app_proxy:
+    environment:
+      APP_HOST: tufein-jellyport_web_1
+      APP_PORT: 8765
+      # JellyPort heeft een eigen wachtwoordscherm; het wachtwoord staat in de Umbrel-app.
+      PROXY_AUTH_ADD: "false"
+
+  web:
+    image: ghcr.io/tufein/jellyport:2.1.0
+    restart: on-failure
+    environment:
+      JELLYPORT_HOST: "0.0.0.0"
+      JELLYPORT_PORT: "8765"
+      JELLYPORT_PASSWORD: ${APP_PASSWORD}
+      JELLYPORT_DATA: /data
+      JELLYPORT_DOWNLOADS: /downloads
+      JELLYPORT_MEDIA: /media
+    volumes:
+      - ${APP_DATA_DIR}/data:/data
+      # Moet dezelfde map zijn als waarin je downloader downloadt (controleer in Umbrel).
+      - ${UMBREL_ROOT}/data/storage/downloads:/downloads
+      # Mappen die Jellyfin kan lezen: Movies en TV Shows.
+      - ${UMBREL_ROOT}/data/storage/downloads/Movies:/media/Movies
+      - ${UMBREL_ROOT}/data/storage/downloads/TV Shows:/media/TV Shows
