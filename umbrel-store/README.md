@@ -8,10 +8,11 @@ Before installing:
 
 1. Publish the image: run the **Publish container image** workflow once (Actions tab) and make
    the `jellyport` package public (GitHub → Packages → Package settings).
-2. Check the volume paths in `tufein-jellyport/docker-compose.yml`. They are an assumption:
-   `/downloads` must be the folder your downloader (for example Umbrel's Transmission) writes to,
-   and `/media/Movies` and `/media/TV Shows` must be folders your Jellyfin library reads.
-3. In JellyPort Settings, use the downloader address reachable from this container and the
-   same paths as above.
+2. The compose file assumes Umbrel's Transmission (`http://umbrel.local:9091/transmission/rpc`,
+   downloads in `/downloads`), films in `/downloads/movies` (mounted as `/media/Movies`) and
+   series in `/downloads/tv` (create it yourself). The Jellyfin library must read those folders.
+3. In JellyPort Settings, enter your Transmission login and set the movie folder to
+   `/media/Movies`. Check that Transmission downloads to a folder other than `movies`, so
+   Jellyfin does not see the same file twice.
 
 Not tested on a real Umbrel.

@@ -18,10 +18,14 @@ services:
       JELLYPORT_DATA: /data
       JELLYPORT_DOWNLOADS: /downloads
       JELLYPORT_MEDIA: /media
+      DOWNLOADER_TYPE: transmission
+      # Umbrel's Transmission-app; pas het adres aan als je het anders bereikt.
+      TRANSMISSION_URL: http://umbrel.local:9091/transmission/rpc
+      DOWNLOADER_ROOT: /downloads
     volumes:
       - ${APP_DATA_DIR}/data:/data
-      # Moet dezelfde map zijn als waarin je downloader downloadt (controleer in Umbrel).
+      # Dezelfde gedeelde downloadmap als in Umbrel's Transmission (/downloads).
       - ${UMBREL_ROOT}/data/storage/downloads:/downloads
-      # Mappen die Jellyfin kan lezen: Movies en TV Shows.
-      - ${UMBREL_ROOT}/data/storage/downloads/Movies:/media/Movies
-      - ${UMBREL_ROOT}/data/storage/downloads/TV Shows:/media/TV Shows
+      # Films staan in /downloads/movies. Maak de map voor series zelf aan (tv) als je die wilt gebruiken.
+      - ${UMBREL_ROOT}/data/storage/downloads/movies:/media/Movies
+      - ${UMBREL_ROOT}/data/storage/downloads/tv:/media/TV Shows
