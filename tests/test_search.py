@@ -1,6 +1,6 @@
 import unittest
 
-from plexport.search import MAX_TITLE_LENGTH, filter_results, prepare_query
+from jellyport.search import MAX_TITLE_LENGTH, filter_results, prepare_query
 
 
 class WildcardSearchTests(unittest.TestCase):

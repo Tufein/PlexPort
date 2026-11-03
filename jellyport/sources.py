@@ -56,7 +56,7 @@ class _OfficialRedirects(urllib.request.HTTPRedirectHandler):
 
 def fetch_json(url):
     _allowed_url(url)
-    request = urllib.request.Request(url, headers={'User-Agent': 'PlexPort/1.8 (public source search)', 'Accept': 'application/json'})
+    request = urllib.request.Request(url, headers={'User-Agent': 'JellyPort/1.8 (public source search)', 'Accept': 'application/json'})
     opener = urllib.request.build_opener(_OfficialRedirects())
     with opener.open(request, timeout=8) as response:
         _allowed_url(response.geturl())

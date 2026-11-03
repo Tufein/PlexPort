@@ -1,12 +1,12 @@
-# PlexPort op je NAS, met je bestaande qBittorrent.
+# JellyPort op je NAS, met je bestaande qBittorrent.
 services:
-  plexport:
+  jellyport:
     build: .
     restart: unless-stopped
     ports:
       - "8765:8765"
     environment:
-      PLEXPORT_PASSWORD: ${PLEXPORT_PASSWORD:?Vul PLEXPORT_PASSWORD in .env in}
+      JELLYPORT_PASSWORD: ${JELLYPORT_PASSWORD:?Vul JELLYPORT_PASSWORD in .env in}
       DOWNLOADER_TYPE: qbittorrent
       QBITTORRENT_URL: ${QBITTORRENT_URL:-}
       DOWNLOADER_ROOT: ${QBITTORRENT_DOWNLOAD_ROOT:-/downloads}

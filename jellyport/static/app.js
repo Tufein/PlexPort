@@ -7,8 +7,8 @@ let settings=null,status={jobs:[],checks:{},configured_sources:0},results=[],cur
 let titleMatches=[],preflightTimer,filesSnapshot=null,filesTimer,filesLoading=null,filesGeneration=0,filesSubmitting=null;
 const pages={overview:'Overzicht',search:'Ontdekken',downloads:'Downloads',settings:'Instellingen'};
 async function api(path,data){
-  const response=await fetch('/api/'+path,{method:data===undefined?'GET':'POST',headers:{'X-PlexPort':'1',...(data===undefined?{}:{'Content-Type':'application/json'})},...(data===undefined?{}:{body:JSON.stringify(data)})});
-  if(response.status===401){window.location.replace('/login'+window.location.hash);throw Error('Meld je opnieuw aan bij PlexPort.');}
+  const response=await fetch('/api/'+path,{method:data===undefined?'GET':'POST',headers:{'X-JellyPort':'1',...(data===undefined?{}:{'Content-Type':'application/json'})},...(data===undefined?{}:{body:JSON.stringify(data)})});
+  if(response.status===401){window.location.replace('/login'+window.location.hash);throw Error('Meld je opnieuw aan bij JellyPort.');}
   const body=await response.json();
   if(!response.ok){const error=Error(body.error||body.message||'Verzoek mislukt.');error.report=body;throw error;}
   return body;
@@ -29,23 +29,23 @@ const bytes=n=>{if(!n)return'0 B';const units=['B','KB','MB','GB','TB'];const i=
 const eta=n=>n<0||n>8640000?'Tijd onbekend':n<60?'Minder dan een minuut':n<3600?Math.ceil(n/60)+' min':Math.floor(n/3600)+' u '+Math.ceil(n%3600/60)+' min';
 function empty(name,title,description,button=''){return`<div class="empty"><span>${icon(name)}</span><h3>${esc(title)}</h3><p>${esc(description)}</p>${button}</div>`;}
 function artwork(title,year,kind){return `<div class="media-artwork" data-artwork-title="${esc(title)}" data-artwork-year="${esc(year||'')}" data-artwork-kind="${kind==='tv'?'tv':'movie'}"><span class="artwork-placeholder" aria-hidden="true">${icon(kind==='tv'?'tv':'film')}<small>${kind==='tv'?'Serie':'Film'}</small></span><img alt="Poster van ${esc(title)}" width="80" height="120" decoding="async" hidden><a class="artwork-credit" target="_blank" rel="noopener noreferrer" hidden>Bron ↗</a></div>`;}
-function jobRow(job){const labels={awaiting_selection:'Kies afleveringen',queued:'In wachtrij',downloading:job.paused?'Gepauzeerd':activityLabel(job.activity),importing:'Importeren',scan_pending:'Plex-scan aanvragen',done:'Geïmporteerd',stopped:'Gestopt',error:'Aandacht nodig'};let details='';const imported=PlexPortJobs.hasImports(job);if(imported){details=`<p class="file-path">${esc(job.scan_requested?'Plex-scan aangevraagd':job.state==='scan_pending'?'Plex-scan volgt':job.state==='error'?'Plex-scan niet gelukt':'In je mediamap · automatisch scannen instellen in Plex')}<br>${(job.files_imported||[]).slice(0,3).map(esc).join('<br>')}${job.files_imported?.length>3?'<br>+ '+(job.files_imported.length-3)+' bestanden':''}</p>`;}else if(job.state!=='error'){details=`<div class="progress-track" role="progressbar" aria-label="Downloadvoortgang" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(Math.max(0,Math.min(1,job.progress))*100)}"><div data-progress="${Math.round(Math.max(0,Math.min(1,job.progress))*100)}"></div></div><div class="progress-caption"><span>${Math.round(job.progress*100)}%${job.speed?' · '+bytes(job.speed)+'/s':''}</span><span>${job.state==='downloading'&&!job.paused&&(!job.activity||job.activity==='downloading')?eta(job.eta):''}</span></div>`;}const actions=(job.selection_requested&&['waiting_metadata','awaiting_selection'].includes(job.selection_state)?`<button class="primary" data-files="${esc(job.id)}">${job.selection_state==='waiting_metadata'?'Bestandsinformatie bekijken':'Afleveringen kiezen'}</button>`:'')+(job.state==='stopped'?`<button data-action="resume" data-id="${esc(job.id)}">Hervatten</button>`:`<button data-action="stop" data-id="${esc(job.id)}">Stoppen</button>`)+(job.state==='error'?`<button data-action="retry" data-id="${esc(job.id)}">Opnieuw proberen</button>`:'')+(job.torrent_id&&['downloading','stopped'].includes(job.state)?`<label class="limit-choice">Snelheid <select data-limit-id="${esc(job.id)}" aria-label="Downloadsnelheid van ${esc(job.title)}">${[[0,'Onbeperkt'],[1,'1 MB/s'],[2,'2 MB/s'],[5,'5 MB/s'],[10,'10 MB/s']].map(([v,l])=>`<option value="${v}"${Number(job.download_limit_mb||0)===v?' selected':''}>${l}</option>`).join('')}${[0,1,2,5,10].includes(Number(job.download_limit_mb||0))?'':`<option value="${Number(job.download_limit_mb)}" selected>${Number(job.download_limit_mb)} MB/s</option>`}</select></label>`:'')+`<button class="danger-text" data-action="remove" data-id="${esc(job.id)}">Verwijderen</button>`;return`<article class="job-row" data-job-id="${esc(job.id)}">${artwork(job.title,job.year,job.kind)}<div class="job-body"><div class="job-top"><div class="job-title">${esc(job.title)}${job.year?' ('+esc(job.year)+')':''}</div><span class="status-pill ${job.state==='done'?'good':job.state==='error'?'bad':''}">${labels[job.state]||esc(job.state)}</span></div><div class="job-meta">${job.kind==='tv'?'Serie':'Film'} · ${esc(job.source)} · ${new Date(job.created*1000).toLocaleDateString('nl-BE',{day:'numeric',month:'short'})}</div>${details}${job.selection_requested&&job.selection_state!=='committed'?'<p class="hint">'+(job.selection_state==='waiting_metadata'?'Bestandsinformatie ophalen. Er kan al data binnenkomen; de import wacht op jouw keuze.':'De import wacht op je bestandskeuze. Kies afleveringen om door te gaan.')+'</p>':''}${job.state==='downloading'&&!job.paused&&activityNote(job.activity)?`<p class="hint activity-note">${esc(activityNote(job.activity))}</p>`:''}${job.error?`<div class="job-error">${esc(job.error)}</div>`:''}${job.selection_error?`<div class="job-error">${esc(job.selection_error)}</div>`:''}${actions?'<div class="job-actions">'+actions+'</div>':''}</div></article>`;}
+function jobRow(job){const labels={awaiting_selection:'Kies afleveringen',queued:'In wachtrij',downloading:job.paused?'Gepauzeerd':activityLabel(job.activity),importing:'Importeren',scan_pending:'Jellyfin-scan aanvragen',done:'Geïmporteerd',stopped:'Gestopt',error:'Aandacht nodig'};let details='';const imported=JellyPortJobs.hasImports(job);if(imported){details=`<p class="file-path">${esc(job.scan_requested?'Jellyfin-scan aangevraagd':job.state==='scan_pending'?'Jellyfin-scan volgt':job.state==='error'?'Jellyfin-scan niet gelukt':'In je mediamap · automatisch scannen instellen in Jellyfin')}<br>${(job.files_imported||[]).slice(0,3).map(esc).join('<br>')}${job.files_imported?.length>3?'<br>+ '+(job.files_imported.length-3)+' bestanden':''}</p>`;}else if(job.state!=='error'){details=`<div class="progress-track" role="progressbar" aria-label="Downloadvoortgang" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(Math.max(0,Math.min(1,job.progress))*100)}"><div data-progress="${Math.round(Math.max(0,Math.min(1,job.progress))*100)}"></div></div><div class="progress-caption"><span>${Math.round(job.progress*100)}%${job.speed?' · '+bytes(job.speed)+'/s':''}</span><span>${job.state==='downloading'&&!job.paused&&(!job.activity||job.activity==='downloading')?eta(job.eta):''}</span></div>`;}const actions=(job.selection_requested&&['waiting_metadata','awaiting_selection'].includes(job.selection_state)?`<button class="primary" data-files="${esc(job.id)}">${job.selection_state==='waiting_metadata'?'Bestandsinformatie bekijken':'Afleveringen kiezen'}</button>`:'')+(job.state==='stopped'?`<button data-action="resume" data-id="${esc(job.id)}">Hervatten</button>`:`<button data-action="stop" data-id="${esc(job.id)}">Stoppen</button>`)+(job.state==='error'?`<button data-action="retry" data-id="${esc(job.id)}">Opnieuw proberen</button>`:'')+(job.torrent_id&&['downloading','stopped'].includes(job.state)?`<label class="limit-choice">Snelheid <select data-limit-id="${esc(job.id)}" aria-label="Downloadsnelheid van ${esc(job.title)}">${[[0,'Onbeperkt'],[1,'1 MB/s'],[2,'2 MB/s'],[5,'5 MB/s'],[10,'10 MB/s']].map(([v,l])=>`<option value="${v}"${Number(job.download_limit_mb||0)===v?' selected':''}>${l}</option>`).join('')}${[0,1,2,5,10].includes(Number(job.download_limit_mb||0))?'':`<option value="${Number(job.download_limit_mb)}" selected>${Number(job.download_limit_mb)} MB/s</option>`}</select></label>`:'')+`<button class="danger-text" data-action="remove" data-id="${esc(job.id)}">Verwijderen</button>`;return`<article class="job-row" data-job-id="${esc(job.id)}">${artwork(job.title,job.year,job.kind)}<div class="job-body"><div class="job-top"><div class="job-title">${esc(job.title)}${job.year?' ('+esc(job.year)+')':''}</div><span class="status-pill ${job.state==='done'?'good':job.state==='error'?'bad':''}">${labels[job.state]||esc(job.state)}</span></div><div class="job-meta">${job.kind==='tv'?'Serie':'Film'} · ${esc(job.source)} · ${new Date(job.created*1000).toLocaleDateString('nl-BE',{day:'numeric',month:'short'})}</div>${details}${job.selection_requested&&job.selection_state!=='committed'?'<p class="hint">'+(job.selection_state==='waiting_metadata'?'Bestandsinformatie ophalen. Er kan al data binnenkomen; de import wacht op jouw keuze.':'De import wacht op je bestandskeuze. Kies afleveringen om door te gaan.')+'</p>':''}${job.state==='downloading'&&!job.paused&&activityNote(job.activity)?`<p class="hint activity-note">${esc(activityNote(job.activity))}</p>`:''}${job.error?`<div class="job-error">${esc(job.error)}</div>`:''}${job.selection_error?`<div class="job-error">${esc(job.selection_error)}</div>`:''}${actions?'<div class="job-actions">'+actions+'</div>':''}</div></article>`;}
 function renderStatus(){
-  const jobs=status.jobs,totals=PlexPortJobs.counts(jobs);
+  const jobs=status.jobs,totals=JellyPortJobs.counts(jobs);
   $('#stat-active').textContent=totals.active;$('#nav-count').textContent=totals.active;
   $('#stat-done').textContent=totals.imported;$('#stat-sources').textContent=status.configured_sources;
   document.querySelectorAll('.app-version').forEach(element=>element.textContent=status.version?'v'+status.version:'Versie onbekend');
   const noJobs=empty('download','Nog even rustig hier.','Voeg je eerste download toe. Wij houden de route naar je bibliotheek in de gaten.','<button class="secondary" data-add>Je eerste download toevoegen '+icon('plus')+'</button>');
   $('#recent-jobs').innerHTML=jobs.length?jobs.slice(0,3).map(jobRow).join(''):noJobs;
   renderDownloads(noJobs);renderSetup();
-  const connections=[['downloader',settings?.downloader.type==='qbittorrent'?'qBittorrent':'Transmission','Torrent-downloader','download'],['plex','Plex Media Server','Automatische bibliotheekscan','film'],['storage','Mediamappen','Download- en Plex-bestemming','layers']];
+  const connections=[['downloader',settings?.downloader.type==='qbittorrent'?'qBittorrent':'Transmission','Torrent-downloader','download'],['jellyfin','Jellyfin','Automatische bibliotheekscan','film'],['storage','Mediamappen','Download- en Jellyfin-bestemming','layers']];
   $('#connection-list').innerHTML=connections.map(([key,title,subtitle,name])=>{
     const check=status.checks[key];
     return`<div class="connection-row"><span class="connection-icon">${icon(name)}</span><div><b>${title}</b><small>${subtitle}</small></div><span class="status-pill ${check?(check.ok?'good':'bad'):''}" title="${esc(check?.message||'Test de verbinding bij Instellingen')}">${check?(check.ok?'Getest':'Controleer'):'Niet getest'}</span></div>`;
   }).join('');
   finishRender();
 }
-async function refresh(){if(pollBusy)return;pollBusy=true;try{status=await api('status');$('#logout-button').hidden=status.authentication!=='session';renderStatus();}catch(e){$('#connection-list').innerHTML=`<div class="warning">De verbinding met PlexPort is verbroken. ${esc(e.message)}</div>`;}finally{pollBusy=false;}}
+async function refresh(){if(pollBusy)return;pollBusy=true;try{status=await api('status');$('#logout-button').hidden=status.authentication!=='session';renderStatus();}catch(e){$('#connection-list').innerHTML=`<div class="warning">De verbinding met JellyPort is verbroken. ${esc(e.message)}</div>`;}finally{pollBusy=false;}}
 function removeDialog(id){
   const job=status.jobs.find(item=>item.id===id);
   if(!job)return;
@@ -58,7 +58,7 @@ function updateRemoveChoice(){
   const forget=$('#remove-scope').value==='forget';
   $('#remove-files-choice').hidden=forget;
   if(forget)$('#remove-files').checked=false;
-  $('#remove-explanation').textContent=forget?'Je haalt alleen de taak uit PlexPort. De torrent en bestanden blijven in je downloader; downloaden of delen kan daar doorgaan. PlexPort zal deze taak niet meer importeren.':'De taak verdwijnt uit PlexPort en de torrent wordt uit je downloader verwijderd. Downloadbestanden blijven behouden, tenzij je hieronder kiest om ze ook te wissen.';
+  $('#remove-explanation').textContent=forget?'Je haalt alleen de taak uit JellyPort. De torrent en bestanden blijven in je downloader; downloaden of delen kan daar doorgaan. JellyPort zal deze taak niet meer importeren.':'De taak verdwijnt uit JellyPort en de torrent wordt uit je downloader verwijderd. Downloadbestanden blijven behouden, tenzij je hieronder kiest om ze ook te wissen.';
 }
 $('#remove-scope').addEventListener('change',updateRemoveChoice);
 for(const selector of ['#remove-cancel','#remove-close'])$(selector).addEventListener('click',()=>$('#remove-dialog').close());
@@ -72,7 +72,7 @@ $('#remove-form').addEventListener('submit',async event=>{
   try{
     const result=await api('action',data);
     $('#remove-dialog').close();
-    toast(result.forgotten?'Taak uit de lijst gehaald. Je downloader blijft ongewijzigd.':result.files_deleted?'Taak en downloadbestanden verwijderd. Media in je Plex-map blijven behouden.':'Taak en torrent verwijderd. De bestanden blijven behouden.');
+    toast(result.forgotten?'Taak uit de lijst gehaald. Je downloader blijft ongewijzigd.':result.files_deleted?'Taak en downloadbestanden verwijderd. Media in je Jellyfin-map blijven behouden.':'Taak en torrent verwijderd. De bestanden blijven behouden.');
     await refresh();
   }catch(error){$('#remove-error').textContent=error.message;}
   finally{controls.forEach(control=>control.disabled=false);}
@@ -81,13 +81,13 @@ function populateSettings(){Object.entries(settings).forEach(([group,values])=>{
 function captureSources(){sourceDraft=[...document.querySelectorAll('.source-row')].map(row=>{const existing=sourceDraft.find(s=>s.id===row.dataset.id)||{};const draft={id:row.dataset.id,type:existing.type||'torznab',name:row.querySelector('[data-source="name"]').value,url:row.querySelector('[data-source="url"]').value,api_key_set:existing.api_key_set};const secret=row.querySelector('[data-source="api_key"]').value;if(secret)draft.api_key=secret;else if(existing.api_key)draft.api_key=existing.api_key;return draft;});}
 function renderSources(){const element=$('#source-fields');element.innerHTML=sourceDraft.length?sourceDraft.map(s=>{const direct=['watchsomuch','yts','eztv'].includes(s.type);return`<div class="source-row" data-id="${esc(s.id)}"><label>Naam<input data-source="name" value="${esc(s.name)}" placeholder="Mijn bron" required></label><label>${direct?'Website':'Torznab-URL'}<input data-source="url" value="${esc(s.url)}" type="url" placeholder="http://server:9696/1/api" ${direct?'readonly':''} required></label><label>${direct?'Rechtstreeks gekoppeld':'API-sleutel'}<input data-source="api_key" type="password" value="${esc(s.api_key||'')}" placeholder="${direct?'Geen API-sleutel nodig':s.api_key_set?'Opgeslagen':'API-sleutel'}" ${direct?'disabled':''} autocomplete="new-password"></label><button type="button" class="icon-button" data-remove-source="${esc(s.id)}" aria-label="Bron verwijderen">×</button></div>`;}).join(''):'<p class="hint">Nog geen bronnen gekoppeld. Je kunt ook rechtstreeks een magnetlink of torrentbestand toevoegen.</p>';}
 
-function collectSettings(){captureSources();const data={downloader:{},library:{},plex:{},sources:sourceDraft.map(s=>{const {api_key_set,...rest}=s;return rest;})};new FormData($('#settings-form')).forEach((value,name)=>{const [group,key]=name.split('.');if(!group||!key)return;if(['password','token'].includes(key)&&!value)return;data[group][key]=value;});return data;}
+function collectSettings(){captureSources();const data={downloader:{},library:{},jellyfin:{},sources:sourceDraft.map(s=>{const {api_key_set,...rest}=s;return rest;})};new FormData($('#settings-form')).forEach((value,name)=>{const [group,key]=name.split('.');if(!group||!key)return;if(['password','token'].includes(key)&&!value)return;data[group][key]=value;});return data;}
 async function saveSettings(){
   if(!$('#settings-form').reportValidity())throw Error('Vul de instellingen volledig in.');
   settings=await api('settings',collectSettings());
   status.configured_sources=settings.sources.length;
   populateSettings();
-  $('#save-status').textContent='Opgeslagen op je PlexPort-server.';
+  $('#save-status').textContent='Opgeslagen op je JellyPort-server.';
   await refresh();
   return settings;
 }
@@ -101,22 +101,22 @@ function activityLabel(activity){
   return {queued:'Wacht op een vrije plek',checking:'Bestanden controleren',metadata:'Download voorbereiden',waiting:'Wacht op delers',moving:'Bestanden verplaatsen',allocating:'Ruimte voorbereiden',paused:'Gepauzeerd',seeding:'Download klaar',unknown:'Status wordt opgehaald'}[activity]||'Downloaden';
 }
 function activityNote(activity){
-  return {queued:'Je downloader laat deze taak starten zodra er plaats is.',checking:'Je downloader controleert de bestanden. PlexPort wacht tot die controle klaar is.',metadata:'De bestandsinformatie wordt opgehaald. Daarna verschijnt de downloadvoortgang.',waiting:'Er komt nu geen data binnen. Dit kan tijdelijk zijn. Blijft het zo, controleer je downloader of kies een andere versie.',moving:'Je downloader verplaatst de bestanden. PlexPort importeert ze pas als dit klaar is.'}[activity]||'';
+  return {queued:'Je downloader laat deze taak starten zodra er plaats is.',checking:'Je downloader controleert de bestanden. JellyPort wacht tot die controle klaar is.',metadata:'De bestandsinformatie wordt opgehaald. Daarna verschijnt de downloadvoortgang.',waiting:'Er komt nu geen data binnen. Dit kan tijdelijk zijn. Blijft het zo, controleer je downloader of kies een andere versie.',moving:'Je downloader verplaatst de bestanden. JellyPort importeert ze pas als dit klaar is.'}[activity]||'';
 }
 function renderProgress(){document.querySelectorAll('.progress-track > [data-progress]').forEach(bar=>{bar.style.width=bar.dataset.progress+'%';});}
-function finishRender(){renderProgress();PlexPortArtwork.mount();}
+function finishRender(){renderProgress();JellyPortArtwork.mount();}
 function renderDownloads(noJobs=''){
   const query=$('#download-query').value.trim();
-  const jobs=status.jobs.filter(job=>PlexPortDiscovery.matches(job.title,query)&&PlexPortJobs.matchesFilter(job,downloadFilter));
-  const totals=PlexPortJobs.counts(status.jobs);
+  const jobs=status.jobs.filter(job=>JellyPortDiscovery.matches(job.title,query)&&JellyPortJobs.matchesFilter(job,downloadFilter));
+  const totals=JellyPortJobs.counts(status.jobs);
   document.querySelectorAll('[data-download-filter]').forEach(button=>{
     const filter=button.dataset.downloadFilter;
     button.setAttribute('aria-pressed',String(filter===downloadFilter));
     button.querySelector('.tab-count').textContent=totals[filter];
   });
-  $('#import-tools').hidden=downloadFilter!=='imported'&&!jobs.some(PlexPortJobs.hasImports);
+  $('#import-tools').hidden=downloadFilter!=='imported'&&!jobs.some(JellyPortJobs.hasImports);
   $('#download-count').textContent=`${jobs.length} van ${status.jobs.length} downloads`;
-  const noImports=empty('film','Nog geen imports in deze selectie.','Je downloads verschijnen hier zodra ze in je Plex-mediamappen zijn geplaatst.');
+  const noImports=empty('film','Nog geen imports in deze selectie.','Je downloads verschijnen hier zodra ze in je Jellyfin-mediamappen zijn geplaatst.');
   $('#all-jobs').innerHTML=jobs.length?jobs.map(jobRow).join(''):downloadFilter==='imported'&&!query?noImports:status.jobs.length?empty('search','Geen downloads in deze selectie.','Pas de naam of de status aan.'):noJobs||empty('download','Nog geen downloads.','Voeg een link of torrentbestand toe.');
 }
 function updateDownloads(){renderDownloads();finishRender();}
@@ -150,27 +150,27 @@ function titleCard(group){
   const episode=group.kind==='tv'&&group.season!==''&&group.season!==undefined&&group.episode!==''&&group.episode!==undefined?` · Seizoen ${esc(group.season)}, aflevering ${esc(group.episode)}`:'';
   const metadata=group.versions.find(release=>release.metadata_source==='TVmaze'&&/^https:\/\/www\.tvmaze\.com\/shows\/\d+$/.test(release.metadata_url||''));
   const credit=metadata?`<p class="metadata-credit"><a href="${esc(metadata.metadata_url)}" target="_blank" rel="noopener noreferrer">Seriegegevens: TVmaze ↗</a></p>`:'';
-  const recommended=PlexPortDiscovery.recommend(group.versions);
+  const recommended=JellyPortDiscovery.recommend(group.versions);
   const download=recommended?`<div class="title-recommendation"><div class="job-body"><span class="recommendation-label">Aanbevolen</span><div class="result-meta">${releaseMeta(recommended)}</div></div><button class="primary" data-result="${recommended.index}" aria-label="Download ${esc(group.title)}: ${esc(recommended.title)}">${icon('download')}Downloaden</button></div>`:'';
   return`<article class="title-card"><div class="title-card-heading">${artwork(group.title,group.year,group.kind)}<div class="job-body"><h3>${esc(group.title)}${group.year?' ('+esc(group.year)+')':''}</h3><p class="job-meta">${group.kind==='tv'?'Serie':'Film'}${episode}${cast?' · Met '+esc(cast):''}</p>${credit}</div></div>${download}<details class="release-list"><summary>Andere kwaliteit of versie kiezen (${group.versions.length})</summary>${group.versions.map(releaseRow).join('')}</details></article>`;
 }
 function renderResults(){
-  const rows=PlexPortDiscovery.select(results,PlexPortDiscovery.readFilters(filterValues()));
-  const groups=PlexPortDiscovery.group(rows,searchKind);
+  const rows=JellyPortDiscovery.select(results,JellyPortDiscovery.readFilters(filterValues()));
+  const groups=JellyPortDiscovery.group(rows,searchKind);
   $('#search-results').innerHTML=`<div class="result-heading">${groups.length} ${groups.length===1?'titel':'titels'} · ${rows.length} van ${results.length} versies</div>`+(rows.length?groups.map(titleCard).join(''):empty('search','Geen versie past bij deze keuze.','Probeer een andere kwaliteit of een grotere maximale bestandsgrootte.','<button class="secondary" id="empty-reset">Alle versies tonen</button>'));
   finishRender();
 }
 function applyPreferences(preferences){
-  writeFilterValues(PlexPortDiscovery.writeFilters(preferences));
+  writeFilterValues(JellyPortDiscovery.writeFilters(preferences));
   $('#preference-status').textContent='Je opgeslagen voorkeuren zijn toegepast. Alles tonen is tijdelijk.';
   if(results.length)renderResults();
 }
 async function savePreferences(){
   const button=$('#save-preferences');button.disabled=true;
   try{
-    const preferences=PlexPortDiscovery.readPreferences(filterValues());
+    const preferences=JellyPortDiscovery.readPreferences(filterValues());
     const saved=await api('settings',{preferences});settings.preferences=saved.preferences;
-    $('#preference-status').textContent='Opgeslagen op je PlexPort-server. Ook beschikbaar op Android.';
+    $('#preference-status').textContent='Opgeslagen op je JellyPort-server. Ook beschikbaar op Android.';
     toast('Je downloadvoorkeuren zijn opgeslagen.');
   }catch(error){$('#preference-status').textContent=error.message;toast(error.message,true);}
   finally{button.disabled=false;}
@@ -182,7 +182,7 @@ async function restorePreferences(){
   finally{button.disabled=false;}
 }
 function resetFilters(){
-  writeFilterValues(PlexPortDiscovery.writeFilters());
+  writeFilterValues(JellyPortDiscovery.writeFilters());
   $('#preference-status').textContent='Alle versies zichtbaar. Je opgeslagen voorkeuren blijven behouden.';
   if(results.length)renderResults();
 }
@@ -229,7 +229,7 @@ async function loadFiles(){
     filesSnapshot=snapshot;
     const ready=snapshot.state==='awaiting_selection';
     $('#files-note').textContent=snapshot.state==='waiting_metadata'?'De bestandsinformatie is nog niet beschikbaar. Je downloader kan nu delers benaderen en data ontvangen. Er wordt pas geïmporteerd nadat je kiest.':snapshot.state==='committed'?'Je bestandskeuze is opgeslagen. Alleen die bestanden komen voor import in aanmerking.':'Je downloader wacht op je keuze. Kies minstens één video; alleen gekozen, voltooide bestanden worden geïmporteerd.';
-    $('#files-list').innerHTML=(snapshot.files||[]).map(file=>`<label class="torrent-file"><input type="checkbox" name="selected_file" value="${file.index}" ${file.selected?'checked':''} ${!ready||!file.selectable?'disabled':''}><span><b>${esc(file.name)}</b><small>${esc(PlexPortSelection.fileDescription(file))} · ${bytes(file.size)}${file.progress>=0?' · '+Math.round(file.progress*100)+'%':''}</small></span></label>`).join('');
+    $('#files-list').innerHTML=(snapshot.files||[]).map(file=>`<label class="torrent-file"><input type="checkbox" name="selected_file" value="${file.index}" ${file.selected?'checked':''} ${!ready||!file.selectable?'disabled':''}><span><b>${esc(file.name)}</b><small>${esc(JellyPortSelection.fileDescription(file))} · ${bytes(file.size)}${file.progress>=0?' · '+Math.round(file.progress*100)+'%':''}</small></span></label>`).join('');
     $('#files-submit').disabled=!ready;
     if(snapshot.error)$('#files-error').textContent=snapshot.error;
     if(snapshot.state==='waiting_metadata')filesTimer=setTimeout(()=>{if(generation===filesGeneration)loadFiles();},3000);
@@ -250,7 +250,7 @@ $('#files-form').addEventListener('submit',async event=>{
   event.preventDefault();if(filesLoading===filesGeneration||filesSubmitting===filesGeneration)return;const generation=filesGeneration,button=$('#files-submit');
   const controls=[...$('#files-form').querySelectorAll('button,input')].map(control=>[control,control.disabled]);
   const values=[...$('#files-list').querySelectorAll('input:checked')].map(input=>input.value);
-  let data;try{data=PlexPortSelection.selectionPayload(filesSnapshot,values);}catch(error){$('#files-error').textContent=error.message;return;}
+  let data;try{data=JellyPortSelection.selectionPayload(filesSnapshot,values);}catch(error){$('#files-error').textContent=error.message;return;}
   filesSubmitting=generation;controls.forEach(([control])=>control.disabled=true);$('#files-error').textContent='';
   try{
     const saved=await api('select',data);
@@ -272,7 +272,7 @@ document.addEventListener('click',event=>{
   }
 });
 function connectionReport(target,report){
-  const title={downloader:'Downloader',storage:'Mediamappen',plex:'Plex'}[target];
+  const title={downloader:'Downloader',storage:'Mediamappen',jellyfin:'Jellyfin'}[target];
   const sections=report.sections?.length?`<p class="hint">${report.sections.map(section=>esc(section.id)+': '+esc(section.title)+' ('+esc(section.type)+')').join(' · ')}</p>`:'';
   const folders=report.folders?folderResults(report):report.free!==undefined&&report.free!==null?`<p class="hint">${bytes(report.free)} vrij</p>`:'';
   return`<div class="connection-report"><div class="${report.ok?'notice':'warning'}"><b>${title}</b><span>${esc(report.message||report.error||'Verzoek mislukt.')}</span></div>${sections}${folders}</div>`;
@@ -293,15 +293,15 @@ async function runConnectionTests(selectedTargets=null){
   $('#check-all-result').textContent='Instellingen opslaan…';
   try{
     await saveSettings();
-    const targets=selectedTargets||['downloader','storage',...(settings.plex.url&&settings.plex.token_set?['plex']:[])];
+    const targets=selectedTargets||['downloader','storage',...(settings.jellyfin.url&&settings.jellyfin.token_set?['jellyfin']:[])];
     const rows=[];let failed=false;
     for(const target of targets){
-      const title={downloader:'Downloader',storage:'Mediamappen',plex:'Plex'}[target];
+      const title={downloader:'Downloader',storage:'Mediamappen',jellyfin:'Jellyfin'}[target];
       $('#check-all-result').innerHTML=rows.join('')+`<p class="hint">${title} controleren…</p>`;
       const report=await testConnection(target);failed=failed||!report.ok;
       rows.push(connectionReport(target,report));
     }
-    if(!selectedTargets&&!targets.includes('plex'))rows.push('<p class="hint">Automatisch scannen via Plex is niet ingesteld. PlexPort kan wel bestanden in je mediamappen plaatsen.</p>');
+    if(!selectedTargets&&!targets.includes('jellyfin'))rows.push('<p class="hint">Automatisch scannen via Jellyfin is niet ingesteld. JellyPort kan wel bestanden in je mediamappen plaatsen.</p>');
     $('#check-all-result').innerHTML=rows.join('');
     toast(failed?'Instellingen opgeslagen. Controleer de meldingen bij je verbindingen.':'Instellingen opgeslagen en gecontroleerd.',failed);
   }catch(error){$('#check-all-result').innerHTML=`<div class="warning">${esc(error.message)}</div>`;toast(error.message,true);}
@@ -309,10 +309,10 @@ async function runConnectionTests(selectedTargets=null){
 }
 
 hydrate();navigate(location.hash.slice(1),false);
-$('#logout-button').addEventListener('click',async()=>{try{const response=await fetch('/auth/logout',{method:'POST',headers:{'X-PlexPort':'1','Content-Type':'application/json'},body:'{}'});if(!response.ok)throw Error('Afmelden is niet gelukt. Probeer opnieuw.');window.location.replace('/login');}catch(error){toast(error.message,true);}});
+$('#logout-button').addEventListener('click',async()=>{try{const response=await fetch('/auth/logout',{method:'POST',headers:{'X-JellyPort':'1','Content-Type':'application/json'},body:'{}'});if(!response.ok)throw Error('Afmelden is niet gelukt. Probeer opnieuw.');window.location.replace('/login');}catch(error){toast(error.message,true);}});
 $('#save-preferences').addEventListener('click',savePreferences);$('#restore-preferences').addEventListener('click',restorePreferences);$('#reset-filters').addEventListener('click',resetFilters);document.addEventListener('click',event=>{if(event.target.closest('#empty-reset'))resetFilters();});for(const id of ['quality','size','seeders','source','sort'])$('#filter-'+id).addEventListener('change',renderResults);$('#download-query').addEventListener('input',updateDownloads);document.querySelectorAll('[data-download-filter]').forEach(button=>button.addEventListener('click',()=>setDownloadFilter(button.dataset.downloadFilter)));
-$('#theme-choice').value=window.PlexPortTheme.preference;
-$('#theme-choice').addEventListener('change',event=>window.PlexPortTheme.set(event.target.value));
+$('#theme-choice').value=window.JellyPortTheme.preference;
+$('#theme-choice').addEventListener('change',event=>window.JellyPortTheme.set(event.target.value));
 $('#settings-form').elements['downloader.type'].addEventListener('change',downloaderHint);
 document.addEventListener('click',async event=>{
   const button=event.target.closest('button');if(!button)return;
@@ -354,9 +354,9 @@ $('#search-form').addEventListener('submit',async event=>{
   }catch(e){$('#search-results').innerHTML=empty('search','Zoeken lukt nog niet.',e.message,'<button class="secondary" data-goto="settings">Naar instellingen '+icon('arrow')+'</button>');}
   finally{button.disabled=false;}
 });
-$('#scan-button').addEventListener('click',async event=>{const button=event.currentTarget;button.disabled=true;try{const kinds=[...new Set(status.jobs.filter(PlexPortJobs.hasImports).map(j=>j.kind))];if(!kinds.length)throw Error('Er zijn nog geen PlexPort-imports om te scannen.');for(const kind of kinds)await api('scan',{kind});toast('Plex-bibliotheekscan aangevraagd.');}catch(e){toast(e.message,true);}finally{button.disabled=false;}});
+$('#scan-button').addEventListener('click',async event=>{const button=event.currentTarget;button.disabled=true;try{const kinds=[...new Set(status.jobs.filter(JellyPortJobs.hasImports).map(j=>j.kind))];if(!kinds.length)throw Error('Er zijn nog geen JellyPort-imports om te scannen.');for(const kind of kinds)await api('scan',{kind});toast('Jellyfin-bibliotheekscan aangevraagd.');}catch(e){toast(e.message,true);}finally{button.disabled=false;}});
 window.addEventListener('hashchange',()=>navigate(location.hash.slice(1),false));
-(async()=>{try{settings=await api('settings');populateSettings();applyPreferences(settings.preferences);await refresh();}catch(e){toast('PlexPort kon niet worden geladen: '+e.message,true);}setInterval(refresh,4000);})();
+(async()=>{try{settings=await api('settings');populateSettings();applyPreferences(settings.preferences);await refresh();}catch(e){toast('JellyPort kon niet worden geladen: '+e.message,true);}setInterval(refresh,4000);})();
 
 document.querySelectorAll('input[name="search-mode"]').forEach(input=>input.addEventListener('change',()=>{$('#query').placeholder=input.value==='actor'?'Naam van een acteur of actrice, bijvoorbeeld Tom Hanks':'Film of serie, bijvoorbeeld Star*';}));
 

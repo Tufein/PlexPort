@@ -4,7 +4,7 @@ import tempfile
 import unittest
 from unittest.mock import Mock, patch
 
-from plexport.core import Store, Worker, defaults, import_media, new_job
+from jellyport.core import Store, Worker, defaults, import_media, new_job
 
 
 class DownloadControlsTests(unittest.TestCase):
@@ -31,7 +31,7 @@ class DownloadControlsTests(unittest.TestCase):
         self.store.save_job(self.job)
 
     def test_queue_stop_survives_restart_without_submitting(self):
-        with patch('plexport.core.client') as get_client:
+        with patch('jellyport.core.client') as get_client:
             self.worker.action(self.job['id'], 'stop')
             worker = Worker(Store(self.root/'state'))
             worker.tick()
@@ -44,7 +44,7 @@ class DownloadControlsTests(unittest.TestCase):
         self.job['progress'] = 1
         self.store.save_job(self.job)
         c = Mock()
-        with patch('plexport.core.client', return_value=c), patch('plexport.core.import_media') as importer:
+        with patch('jellyport.core.client', return_value=c), patch('jellyport.core.import_media') as importer:
             self.worker.action(self.job['id'], 'stop')
             Worker(Store(self.root/'state')).tick()
             importer.assert_not_called()
@@ -57,7 +57,7 @@ class DownloadControlsTests(unittest.TestCase):
 
     def test_stop_during_import_keeps_it_on_hold_and_completed_task_does_not_reimport(self):
         for state in ('importing', 'scan_pending', 'done', 'error'):
-            with self.subTest(state=state), patch('plexport.core.client'):
+            with self.subTest(state=state), patch('jellyport.core.client'):
                 self.submitted(state)
                 self.worker.action(self.job['id'], 'stop')
                 self.worker.action(self.job['id'], 'stop')
@@ -66,7 +66,7 @@ class DownloadControlsTests(unittest.TestCase):
     def test_download_limit_applies_only_to_this_torrent_and_persists(self):
         self.submitted()
         c = Mock()
-        with patch('plexport.core.client', return_value=c):
+        with patch('jellyport.core.client', return_value=c):
             result = self.worker.action(self.job['id'], 'limit', download_limit_mb=5)
         c.set_download_limit.assert_called_once_with('a'*40, 5_000_000)
         c.action.assert_not_called()
@@ -75,7 +75,7 @@ class DownloadControlsTests(unittest.TestCase):
 
     def test_download_limit_rejects_bad_values_and_unsubmitted_tasks(self):
         c = Mock()
-        with patch('plexport.core.client', return_value=c):
+        with patch('jellyport.core.client', return_value=c):
             with self.assertRaises(ValueError):
                 self.worker.action(self.job['id'], 'limit', download_limit_mb=2)  # still queued
             self.submitted()
@@ -85,7 +85,7 @@ class DownloadControlsTests(unittest.TestCase):
         c.set_download_limit.assert_not_called()
 
     def test_client_limit_calls_are_scoped_to_one_torrent(self):
-        from plexport.integrations import QBittorrent, Transmission
+        from jellyport.integrations import QBittorrent, Transmission
         t = Transmission.__new__(Transmission)
         t.rpc = Mock()
         t.set_download_limit('a'*40, 5_000_000)
@@ -102,7 +102,7 @@ class DownloadControlsTests(unittest.TestCase):
         self.store.save_job(self.job)
         c = Mock()
         c.find.return_value = 'b'*40
-        with patch('plexport.core.client', return_value=c):
+        with patch('jellyport.core.client', return_value=c):
             self.worker.action(self.job['id'], 'stop')
             c.find.assert_called_once()
             c.action.assert_called_once_with('b'*40, 'pause')
@@ -115,7 +115,7 @@ class DownloadControlsTests(unittest.TestCase):
         self.store.save_job(self.job)
         c = Mock()
         c.find.return_value = ''
-        with patch('plexport.core.client', return_value=c):
+        with patch('jellyport.core.client', return_value=c):
             for action in ('stop', 'remove'):
                 with self.assertRaisesRegex(ValueError, 'nog geen torrent-ID'):
                     self.worker.action(self.job['id'], action)
@@ -129,13 +129,13 @@ class DownloadControlsTests(unittest.TestCase):
         c = Mock()
         c.remove.side_effect = TimeoutError()
         c.action.side_effect = TimeoutError()
-        with patch('plexport.core.client', return_value=c):
+        with patch('jellyport.core.client', return_value=c):
             for action in ('stop', 'remove'):
                 with self.assertRaises(TimeoutError):
                     self.worker.action(self.job['id'], action)
                 self.assertEqual(self.store.job(self.job['id']), self.job)
 
-    def test_removing_download_files_keeps_published_plex_media(self):
+    def test_removing_download_files_keeps_published_jellyfin_media(self):
         self.submitted('done')
         source = Path(self.job['local_dir'])/'film.mkv'
         source.parent.mkdir()
@@ -145,7 +145,7 @@ class DownloadControlsTests(unittest.TestCase):
         self.store.save_job(self.job)
         c = Mock()
         c.remove.side_effect = lambda tid, delete_files, directory: source.unlink() if delete_files else None
-        with patch('plexport.core.client', return_value=c):
+        with patch('jellyport.core.client', return_value=c):
             self.worker.action(self.job['id'], 'remove', delete_files=True)
         self.assertFalse(source.exists())
         self.assertEqual(Path(published[0]).read_bytes(), b'media')
@@ -156,25 +156,25 @@ class DownloadControlsTests(unittest.TestCase):
         source = Path(self.job['local_dir'])/'film.mkv'
         source.parent.mkdir()
         source.write_bytes(b'media')
-        with patch('plexport.core.client') as get_client:
+        with patch('jellyport.core.client') as get_client:
             self.worker.action(self.job['id'], 'remove')
             get_client.return_value.remove.assert_called_once_with('a'*40, False, self.job['remote_dir'])
         self.assertEqual(source.read_bytes(), b'media')
         self.store.save_job(self.job)
-        with patch('plexport.core.client') as get_client:
+        with patch('jellyport.core.client') as get_client:
             self.worker.action(self.job['id'], 'remove', forget=True)
             get_client.assert_not_called()
 
     def test_cleanup_uses_original_server_paths_and_updated_credentials_only_if_same_server(self):
         self.submitted()
         self.store.save_settings({'downloader':{'username':'new-user','password':'new-pass'}})
-        with patch('plexport.core.client') as get_client:
+        with patch('jellyport.core.client') as get_client:
             self.worker.action(self.job['id'], 'stop')
             config = get_client.call_args.args[0]
             self.assertEqual(config['password'], 'new-pass')
             self.assertEqual(config['remote_root'], '/downloads')
         self.store.save_settings({'downloader':{'url':'http://another.local:8080'}})
-        with patch('plexport.core.client') as get_client:
+        with patch('jellyport.core.client') as get_client:
             self.worker.action(self.job['id'], 'remove')
             config = get_client.call_args.args[0]
             self.assertEqual(config['url'], self.config['downloader']['url'])
@@ -191,7 +191,7 @@ class DownloadControlsTests(unittest.TestCase):
         downloader.add.return_value = 'a'*40
         downloader.status.return_value = {'progress': .4, 'speed': 123, 'eta': 10,
                                           'paused': False, 'complete': False, 'activity': 'downloading'}
-        with patch('plexport.core.client', return_value=downloader) as get_client:
+        with patch('jellyport.core.client', return_value=downloader) as get_client:
             self.worker.tick()
             self.worker.tick()
             self.worker.action(self.job['id'], 'pause')
@@ -213,7 +213,7 @@ class DownloadControlsTests(unittest.TestCase):
         downloader = Mock()
         downloader.status.return_value = {'progress': .4, 'speed': 123, 'eta': 10,
                                           'paused': False, 'complete': False}
-        with patch('plexport.core.client', return_value=downloader) as get_client:
+        with patch('jellyport.core.client', return_value=downloader) as get_client:
             self.worker.tick()
             self.worker.action(self.job['id'], 'pause')
             self.worker.action(self.job['id'], 'stop')
@@ -223,7 +223,7 @@ class DownloadControlsTests(unittest.TestCase):
     def test_tick_snapshot_does_not_resurrect_deleted_task_or_crash(self):
         snapshot = copy.deepcopy(self.store.jobs())
         self.store.delete_job(self.job['id'])
-        with patch.object(self.store, 'jobs', return_value=snapshot), patch('plexport.core.client') as get_client:
+        with patch.object(self.store, 'jobs', return_value=snapshot), patch('jellyport.core.client') as get_client:
             self.worker.tick()
             get_client.assert_not_called()
         self.assertEqual(self.store.jobs(), [])

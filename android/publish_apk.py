@@ -38,8 +38,9 @@ def publish(root, apksigner, personal_build=False):
     signing_certificate = certificate(apksigner, built)
     if not personal_build:
         previous = []
-        for apk in (root / 'dist').glob('PlexPort-*.apk'):
-            match = re.fullmatch(r'PlexPort-(\d+)\.(\d+)\.(\d+)\.apk', apk.name)
+        # Releases published before the rename are still named PlexPort-*.apk and carry the signing certificate.
+        for apk in sorted((root / 'dist').glob('*Port-*.apk')):
+            match = re.fullmatch(r'(?:Jelly|Plex)Port-(\d+)\.(\d+)\.(\d+)\.apk', apk.name)
             if match:
                 apk_version = tuple(map(int, match.groups()))
                 if apk_version <= current_version:
@@ -52,7 +53,7 @@ def publish(root, apksigner, personal_build=False):
                              'Herstel de oorspronkelijke .signing-back-up; er is geen update gepubliceerd.')
     folder = root / 'dist' / 'personal' if personal_build else root / 'dist'
     folder.mkdir(parents=True, exist_ok=True)
-    target = folder / f'PlexPort-{version}.apk'
+    target = folder / f'JellyPort-{version}.apk'
     temporary = target.with_suffix('.apk.tmp')
     shutil.copyfile(built, temporary)
     temporary.replace(target)

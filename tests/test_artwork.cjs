@@ -1,6 +1,6 @@
 const test=require('node:test');
 const assert=require('node:assert/strict');
-const {identity,endpoint,safeMetadata}=require('../plexport/static/artwork.js');
+const {identity,endpoint,safeMetadata}=require('../jellyport/static/artwork.js');
 test('artwork identity separates years and media kinds',()=>{
   assert.notEqual(identity('Example',2024,'movie'),identity('Example',1922,'movie'));
   assert.notEqual(identity('Example',2024,'movie'),identity('Example',2024,'tv'));

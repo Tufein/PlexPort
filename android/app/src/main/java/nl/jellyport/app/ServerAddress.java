@@ -1,10 +1,10 @@
-package nl.plexport.app;
+package nl.jellyport.app;
 
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.Locale;
 
-/** Only an explicit HTTP(S) origin can become the trusted PlexPort server. */
+/** Only an explicit HTTP(S) origin can become the trusted JellyPort server. */
 public final class ServerAddress {
     private ServerAddress() {}
 

@@ -67,7 +67,7 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
 
 def read_public(url, limit, image=False):
     opener = urllib.request.build_opener(NoRedirect())
-    request = urllib.request.Request(url, headers={'User-Agent': 'PlexPort/1.2'})
+    request = urllib.request.Request(url, headers={'User-Agent': 'JellyPort/1.2'})
     try:
         response = opener.open(request, timeout=6)
     except urllib.error.HTTPError as error:

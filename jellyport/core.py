@@ -16,7 +16,7 @@ import urllib.error
 import urllib.parse
 import uuid
 
-from .integrations import client, http_url, plex_scan, same_download_dir
+from .integrations import client, http_url, jellyfin_scan, same_download_dir
 from .duplicates import title_conflicts
 from .selection import describe_files, episode_info, identities, metadata_token, selected_complete, validate_selection
 from .storage import import_capability
@@ -53,7 +53,7 @@ def storage_report(config, kind=None, expected_bytes=0):
             if not path.is_dir():
                 raise ValueError(label + ' is niet bereikbaar. Controleer de mapkoppeling bij Instellingen.')
             # A permissions flag alone does not verify writable SMB/NFS mounts or ACLs.
-            with tempfile.TemporaryFile(prefix='.plexport-check-', dir=path) as probe:
+            with tempfile.TemporaryFile(prefix='.jellyport-check-', dir=path) as probe:
                 probe.write(b'1')
                 probe.flush()
                 os.fsync(probe.fileno())
@@ -68,10 +68,10 @@ def storage_report(config, kind=None, expected_bytes=0):
     if not expected_bytes:
         warnings.append('De bestandsgrootte is nog onbekend. Vrije ruimte is geen garantie dat de hele download past.')
     elif any(f['key'] != 'downloads' and f['ok'] and f['free'] < expected_bytes for f in folders):
-        warnings.append('De mediamap heeft mogelijk extra ruimte nodig als PlexPort de video moet kopiëren.')
+        warnings.append('De mediamap heeft mogelijk extra ruimte nodig als JellyPort de video moet kopiëren.')
     return {'ok': all(f['ok'] for f in folders), 'folders': folders, 'warnings': warnings,
             'expected_bytes': expected_bytes,
-            'note': 'Deze controle test de mappen van PlexPort. De downloader moet dezelfde downloadmap gebruiken. Andere downloads kunnen ondertussen ruimte innemen.'}
+            'note': 'Deze controle test de mappen van JellyPort. De downloader moet dezelfde downloadmap gebruiken. Andere downloads kunnen ondertussen ruimte innemen.'}
 
 
 def require_storage(config, kind, expected_bytes=0):
@@ -82,15 +82,20 @@ def require_storage(config, kind, expected_bytes=0):
     return report
 
 
+def env(name, default=''):
+    # JELLYPORT_* is preferred; PLEXPORT_* keeps existing installations working after the rename.
+    return os.environ.get('JELLYPORT_' + name, os.environ.get('PLEXPORT_' + name, default))
+
+
 def defaults():
-    media = Path(os.environ.get('PLEXPORT_MEDIA', './media')).resolve()
-    downloads = str(Path(os.environ.get('PLEXPORT_DOWNLOADS', './downloads')).resolve())
+    media = Path(env('MEDIA', './media')).resolve()
+    downloads = str(Path(env('DOWNLOADS', './downloads')).resolve())
     downloader_type = os.environ.get('DOWNLOADER_TYPE', 'qbittorrent')
     return {'downloader': {'type': downloader_type, 'url': os.environ.get('TRANSMISSION_URL', 'http://127.0.0.1:9091/transmission/rpc') if downloader_type == 'transmission' else os.environ.get('QBITTORRENT_URL', ''),
                            'username': os.environ.get('TRANSMISSION_USER', '') if downloader_type == 'transmission' else os.environ.get('QBITTORRENT_USER', ''), 'password': os.environ.get('TRANSMISSION_PASSWORD', '') if downloader_type == 'transmission' else '',
                            'remote_root': os.environ.get('DOWNLOADER_ROOT', downloads), 'local_root': downloads},
             'library': {'movies': str(media / 'Movies'), 'tv': str(media / 'TV Shows')},
-            'plex': {'url': '', 'token': '', 'movie_section': '', 'tv_section': ''}, 'sources': [],
+            'jellyfin': {'url': '', 'token': '', 'movie_section': '', 'tv_section': ''}, 'sources': [],
             'preferences': DEFAULT_PREFERENCES.copy()}
 
 
@@ -126,7 +131,7 @@ def merge_settings(previous, incoming):
             if type(value) is not expected_type or value not in PREFERENCE_CHOICES[key]:
                 raise ValueError('Ongeldige zoekvoorkeur: ' + key)
             result['preferences'][key] = value
-    for group in ('downloader', 'library', 'plex'):
+    for group in ('downloader', 'library', 'jellyfin'):
         for key in previous[group]:
             if key in incoming.get(group, {}):
                 value = incoming[group][key]
@@ -137,8 +142,8 @@ def merge_settings(previous, incoming):
         raise ValueError('Kies Transmission of qBittorrent.')
     if result['downloader']['url']:
         http_url(result['downloader']['url'])
-    if result['plex']['url']:
-        http_url(result['plex']['url'])
+    if result['jellyfin']['url']:
+        http_url(result['jellyfin']['url'])
     for group, keys in (('downloader', ('local_root',)), ('library', ('movies', 'tv'))):
         for key in keys:
             if not Path(result[group][key]).is_absolute():
@@ -180,7 +185,8 @@ class Store:
     def __init__(self, directory):
         directory = Path(directory)
         directory.mkdir(parents=True, exist_ok=True, mode=0o700)
-        self.path = directory / 'plexport.sqlite'
+        legacy = directory / 'plexport.sqlite'
+        self.path = legacy if legacy.exists() and not (directory / 'jellyport.sqlite').exists() else directory / 'jellyport.sqlite'
         self.lock = threading.RLock()
         with self.connect() as db:
             db.execute('CREATE TABLE IF NOT EXISTS settings (id INTEGER PRIMARY KEY, body TEXT NOT NULL)')
@@ -205,6 +211,9 @@ class Store:
             config = json.loads(db.execute('SELECT body FROM settings WHERE id=1').fetchone()[0])
             # Existing databases gain defaults in memory; reading never changes them.
             config['preferences'] = {**DEFAULT_PREFERENCES, **config.get('preferences', {})}
+            # Pre-Jellyfin databases: the old Plex token and section numbers are not reusable, so start empty in memory.
+            config.pop('plex', None)
+            config.setdefault('jellyfin', defaults()['jellyfin'])
             return config
 
     def save_settings(self, incoming):
@@ -315,7 +324,7 @@ def new_job(config, data):
     else:
         http_url(link)
     sid = uuid.uuid4().hex
-    c = {k: copy.deepcopy(config[k]) for k in ('downloader', 'library', 'plex')}
+    c = {k: copy.deepcopy(config[k]) for k in ('downloader', 'library', 'jellyfin') if k in config}
     job = {'id': sid, **candidate, 'link': link, 'metainfo': metainfo,
             'torrent_fingerprint': hashlib.sha256(binary).hexdigest() if metainfo else link,
             'source': str(data.get('source', 'Handmatig'))[:120], 'config': c, **task_paths(c['downloader'], sid),
@@ -361,7 +370,7 @@ def publish_file(source, destination):
                     if not first:
                         return
         raise ValueError('Bestand bestaat al met andere inhoud: ' + destination.name)
-    temp = destination.parent / ('.plexport-' + uuid.uuid4().hex + '.part')
+    temp = destination.parent / ('.jellyport-' + uuid.uuid4().hex + '.part')
     try:
         try:
             os.link(source, temp)
@@ -416,7 +425,7 @@ def import_media(job, files):
     title = job['title'] + (f" ({job['year']})" if job['year'] else '')
     library = Path(job['config']['library']['movies' if job['kind'] == 'movie' else 'tv']).resolve()
     if not library.is_dir():
-        raise ValueError('De Plex-mediamap bestaat niet of is niet gemount: ' + str(library))
+        raise ValueError('De Jellyfin-mediamap bestaat niet of is niet gemount: ' + str(library))
     main = max(videos, key=lambda p: p.stat().st_size)
     plan = []
     for f, path in candidates:
@@ -441,10 +450,10 @@ def import_media(job, files):
             name = f'{title}/Season {season:02d}/{title} - S{season:02d}E{episode:02d}{extra}{lang}{path.suffix.lower()}'
         destination = safe_file(library, name)
         if destination.is_relative_to(root) or root.is_relative_to(destination.parent):
-            raise ValueError('Downloadmap en Plex-map mogen niet overlappen.')
+            raise ValueError('Downloadmap en Jellyfin-map mogen niet overlappen.')
         plan.append((path, destination))
     if len({str(dest) for _, dest in plan}) != len(plan):
-        raise ValueError('Meerdere bestanden zouden dezelfde Plex-naam krijgen. Controleer de torrent.')
+        raise ValueError('Meerdere bestanden zouden dezelfde Jellyfin-naam krijgen. Controleer de torrent.')
     imported = []
     for source, destination in plan:
         publish_file(source, destination)
@@ -479,13 +488,13 @@ class Worker:
             existing_jobs = self.store.jobs()
             for existing in existing_jobs:
                 if job['torrent_fingerprint'] == existing.get('torrent_fingerprint', existing['link']):
-                    raise ValueError('Deze download staat al in PlexPort.')
+                    raise ValueError('Deze download staat al in JellyPort.')
             matches = title_conflicts(existing_jobs, job)
             confirmed = data.get('confirmed_conflicts', [])
             if not isinstance(confirmed, list) or any(not isinstance(value, str) for value in confirmed):
                 raise ValueError('Bevestig de gevonden taken met hun taak-ID; een algemene overschrijving is niet toegestaan.')
             if any(match['id'] not in confirmed for match in matches):
-                raise APIConflict('Deze titel staat al in je PlexPort-geschiedenis. Bevestig de andere versie om verder te gaan.',
+                raise APIConflict('Deze titel staat al in je JellyPort-geschiedenis. Bevestig de andere versie om verder te gaan.',
                                   'title_conflict', matches=matches)
             require_storage(job['config'], job['kind'], job['expected_bytes'])
             self.store.save_job(job)
@@ -560,7 +569,7 @@ class Worker:
             return {'ok': True, 'id': job_id, 'state': job['selection_state'],
                     'metadata_token': job.get('selection_metadata_token', ''), 'files': files,
                     'error': job.get('selection_error', ''),
-                    'warning': 'Magnetmetadata ophalen kan peers contacteren en kort gegevens overdragen. PlexPort pauzeert zodra de bestandslijst beschikbaar is.'}
+                    'warning': 'Magnetmetadata ophalen kan peers contacteren en kort gegevens overdragen. JellyPort pauzeert zodra de bestandslijst beschikbaar is.'}
 
     def select(self, job_id, indices, token):
         with self.lock:
@@ -675,13 +684,13 @@ class Worker:
             # The capability is advisory. Per-file copy checks below account for already
             # published files on retries, while preserving existing library content.
             job['files_imported'] = import_media(job, job['files'])
-            job['state'] = 'scan_pending' if job['config']['plex'].get('url') and job['config']['plex'].get('token') else 'done'
+            job['state'] = 'scan_pending' if job['config'].get('jellyfin', {}).get('url') and job['config'].get('jellyfin', {}).get('token') else 'done'
             job['scan_requested'] = False
             job['finished'] = time.time()
             self.store.save_job(job)
         elif state == 'scan_pending':
-            # Current Plex credentials/library selection may have been repaired since the download.
-            plex_scan(self.store.settings()['plex'], job['kind'])
+            # Current Jellyfin credentials/library selection may have been repaired since the download.
+            jellyfin_scan(self.store.settings()['jellyfin'], job['kind'])
             job['scan_requested'] = True
             job['state'] = 'done'
             self.store.save_job(job)

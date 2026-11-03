@@ -1,5 +1,5 @@
 name: Suggest a feature
-description: What would make PlexPort easier for you to use?
+description: What would make JellyPort easier for you to use?
 title: "Idea: "
 body:
   - type: textarea

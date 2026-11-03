@@ -1,6 +1,6 @@
 FROM python:3.13-slim
 WORKDIR /app
-COPY plexport /app/plexport
-ENV PYTHONUNBUFFERED=1 PLEXPORT_HOST=0.0.0.0 PLEXPORT_DATA=/data PLEXPORT_DOWNLOADS=/downloads PLEXPORT_MEDIA=/media
+COPY jellyport /app/jellyport
+ENV PYTHONUNBUFFERED=1 JELLYPORT_HOST=0.0.0.0 JELLYPORT_DATA=/data JELLYPORT_DOWNLOADS=/downloads JELLYPORT_MEDIA=/media
 EXPOSE 8765
-CMD ["python", "-m", "plexport"]
+CMD ["python", "-m", "jellyport"]

@@ -14,10 +14,10 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
-from plexport import __version__
-from plexport.core import Store, Worker, defaults, import_media, merge_settings, new_job, public_job, public_settings, publish_file, safe_file, storage_report
-from plexport.integrations import QBittorrent, Transmission, plex_sections, search_source
-from plexport.server import create_server
+from jellyport import __version__
+from jellyport.core import Store, Worker, defaults, import_media, merge_settings, new_job, public_job, public_settings, publish_file, safe_file, storage_report
+from jellyport.integrations import QBittorrent, Transmission, jellyfin_sections, search_source
+from jellyport.server import create_server
 
 MAGNET = 'magnet:?xt=urn:btih:' + 'a' * 40
 
@@ -64,10 +64,8 @@ class Stub:
                                  'save_path': outer.path, 'size': 5, 'amount_left': 0 if outer.complete else 3}] if outer.tag else [])
                 elif self.path.startswith('/api/v2/torrents/files'):
                     self.reply([{'name': 'movie.mkv', 'size': 5, 'progress': 1 if outer.complete else .4, 'priority': 1}])
-                elif self.path == '/library/sections':
-                    self.reply('<MediaContainer><Directory key="1" title="Films" type="movie"/><Directory key="2" title="Series" type="show"/></MediaContainer>')
-                elif self.path.endswith('/refresh'):
-                    self.reply('', 503 if outer.reject_scan else 200)
+                elif self.path == '/Library/VirtualFolders':
+                    self.reply([{'Name': 'Films', 'ItemId': 'a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1', 'CollectionType': 'movies'}, {'Name': 'Series', 'ItemId': 'b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2', 'CollectionType': 'tvshows'}])
                 elif self.path.startswith('/torznab'):
                     self.reply('<rss xmlns:torznab="http://torznab.com/schemas/2015/feed"><channel><item><title>Test &amp; Film</title><enclosure url="magnet:?xt=urn:btih:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" length="5"/><torznab:attr name="seeders" value="42"/></item></channel></rss>')
                 else:
@@ -76,6 +74,9 @@ class Stub:
             def do_POST(self):
                 body = self.rfile.read(int(self.headers.get('Content-Length', '0')))
                 outer.calls.append(('POST', self.path, body))
+                if self.path.startswith('/Items/') and '/Refresh' in self.path:
+                    self.reply('', 503 if outer.reject_scan else 204)
+                    return
                 if self.path == '/transmission/rpc':
                     if self.headers.get('X-Transmission-Session-Id') != 'session-test':
                         self.reply('', 409, {'X-Transmission-Session-Id': 'session-test'})
@@ -185,7 +186,7 @@ class CoreTests(TempFixture):
         queued = [result for result in results if isinstance(result, dict)]
         rejected = [result for result in results if isinstance(result, str)]
         self.assertEqual(len(queued), 1)
-        self.assertEqual(rejected, ['Deze download staat al in PlexPort.'])
+        self.assertEqual(rejected, ['Deze download staat al in JellyPort.'])
         self.assertEqual(len(store.jobs()), 1)
         self.assertEqual(queued[0]['state'], 'queued')
         for private in ('config', 'link', 'metainfo', 'local_dir', 'remote_dir', 'torrent_fingerprint'):
@@ -205,7 +206,7 @@ class CoreTests(TempFixture):
         Path(self.config['library']['tv']).rmdir()
         queued = worker.enqueue({'title': 'Movie', 'link': MAGNET})
         movies.rmdir()
-        with patch('plexport.core.client') as downloader:
+        with patch('jellyport.core.client') as downloader:
             worker.tick()
             downloader.assert_not_called()
         failed = store.job(queued['id'])
@@ -253,7 +254,7 @@ class CoreTests(TempFixture):
 
     def test_storage_rejects_known_size_but_explains_unknown_size(self):
         usage = Mock(free=100)
-        with patch('plexport.core.shutil.disk_usage', return_value=usage):
+        with patch('jellyport.core.shutil.disk_usage', return_value=usage):
             report = storage_report(self.config, 'movie', 101)
             self.assertFalse(report['ok'])
             self.assertIn('te weinig', report['folders'][0]['message'])
@@ -265,7 +266,7 @@ class CoreTests(TempFixture):
                 self.job(expected_bytes=size)
 
     def test_storage_probes_actual_write_permission(self):
-        with patch('plexport.core.tempfile.TemporaryFile', side_effect=PermissionError()):
+        with patch('jellyport.core.tempfile.TemporaryFile', side_effect=PermissionError()):
             report = storage_report(self.config, 'movie', 1)
         self.assertFalse(report['ok'])
         self.assertIn('Geen toegang', report['folders'][0]['message'])
@@ -275,7 +276,7 @@ class CoreTests(TempFixture):
         store = Store(self.root/'state')
         job = self.job()
         store.save_job(job)
-        with patch('plexport.core.client') as downloader:
+        with patch('jellyport.core.client') as downloader:
             Worker(store).tick()
             downloader.assert_not_called()
         failed = store.job(job['id'])
@@ -287,7 +288,7 @@ class CoreTests(TempFixture):
         source = self.root/'source'
         source.write_bytes(b'hello')
         dest = self.root/'library'/'dest.mkv'
-        with patch('plexport.core.os.link', side_effect=OSError(errno.EXDEV, 'different volume')), patch('plexport.core.shutil.disk_usage', return_value=Mock(free=4)), patch('plexport.core.shutil.copy2') as copier:
+        with patch('jellyport.core.os.link', side_effect=OSError(errno.EXDEV, 'different volume')), patch('jellyport.core.shutil.disk_usage', return_value=Mock(free=4)), patch('jellyport.core.shutil.copy2') as copier:
             with self.assertRaisesRegex(ValueError, 'Te weinig'):
                 publish_file(source, dest)
             copier.assert_not_called()
@@ -310,7 +311,7 @@ class CoreTests(TempFixture):
         source = self.root/'source'
         source.write_bytes(b'hello')
         dest = self.root/'library'/'dest.mkv'
-        with patch('plexport.core.os.link', side_effect=OSError(errno.EXDEV, 'different volume')):
+        with patch('jellyport.core.os.link', side_effect=OSError(errno.EXDEV, 'different volume')):
             publish_file(source, dest)
         self.assertEqual(dest.read_bytes(), b'hello')
         self.assertTrue(source.exists())
@@ -369,7 +370,7 @@ class CoreTests(TempFixture):
 
     def test_secret_redaction_and_preservation(self):
         self.config['downloader']['password'] = 'private-password'
-        self.config['plex']['token'] = 'private-token'
+        self.config['jellyfin']['token'] = 'private-token'
         self.config['sources'] = [{'id':'x', 'name':'source', 'url':'http://127.0.0.1/api', 'api_key':'private-key'}]
         clean = public_settings(self.config)
         self.assertNotIn('private-', json.dumps(clean))
@@ -437,7 +438,7 @@ class IntegrationTests(TempFixture):
                 c.test()  # Establish Transmission's session before counting removal requests.
                 job = self.job()
                 self.stub.path = job['remote_dir']
-                self.stub.tag = 'plexport-'+job['id']
+                self.stub.tag = 'jellyport-'+job['id']
                 tid = 'a'*40
                 c.remove(tid)
                 c.remove(tid, True, job['remote_dir'])
@@ -484,14 +485,14 @@ class IntegrationTests(TempFixture):
                 self.assertEqual(status['activity'], activity)
                 self.assertFalse(status['complete'])
 
-    def test_search_and_plex_sections(self):
+    def test_search_and_jellyfin_sections(self):
         items = search_source({'url':self.stub.url+'/torznab', 'api_key':'key', 'name':'Test source'}, 'Film', 'movie')
         self.assertEqual(items[0]['title'], 'Test & Film')
         self.assertEqual(items[0]['seeders'], 42)
         self.assertEqual(items[0]['size'], 5)
         self.assertIn('cat=2000', self.stub.calls[-1][1])
-        sections = plex_sections({'url':self.stub.url, 'token':'token'})
-        self.assertEqual([s['id'] for s in sections], ['1', '2'])
+        sections = jellyfin_sections({'url':self.stub.url, 'token':'token'})
+        self.assertEqual([s['id'] for s in sections], ['a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1', 'b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2'])
 
     def test_qbittorrent_52_login_cookie_and_add_responses(self):
         self.stub.modern_qbit = True
@@ -545,7 +546,7 @@ class IntegrationTests(TempFixture):
 
     def test_worker_restart_import_and_failed_scan_retry(self):
         self.config['downloader']['url'] = self.stub.url+'/transmission/rpc'
-        self.config['plex'] = {'url':self.stub.url, 'token':'token', 'movie_section':'1', 'tv_section':'2'}
+        self.config['jellyfin'] = {'url':self.stub.url, 'token':'token', 'movie_section':'a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1', 'tv_section':'b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2'}
         store = Store(self.root/'state')
         store.save_settings(self.config)
         job = self.job()
@@ -607,7 +608,7 @@ class IntegrationTests(TempFixture):
         job = self.job()
         job.update(state='error', retry_state='downloading', torrent_id='a'*40, error='Aanmelden mislukt')
         store.save_job(job)
-        self.stub.tag = 'plexport-'+job['id']
+        self.stub.tag = 'jellyport-'+job['id']
         store.save_settings({'downloader': {'url': self.stub.url, 'username': 'new-user', 'password': 'new-password'}})
         worker = Worker(store)
 
@@ -678,7 +679,7 @@ class IntegrationTests(TempFixture):
             self.assertTrue(Store(self.root/'state').job(submitted_job['id'])['add_started'])
             raise TimeoutError('Antwoord verloren')
 
-        with patch('plexport.core.client') as get_client:
+        with patch('jellyport.core.client') as get_client:
             get_client.return_value.add.side_effect = lost_response
             worker.tick()
         failed = store.job(job['id'])
@@ -711,7 +712,7 @@ class ServerTests(TempFixture):
 
     def call(self, path, body=None, headers=None):
         data = json.dumps(body).encode() if body is not None else None
-        req = urllib.request.Request(self.url+path, data=data, headers={'X-PlexPort':'1', 'Content-Type':'application/json', **(headers or {})})
+        req = urllib.request.Request(self.url+path, data=data, headers={'X-JellyPort':'1', 'Content-Type':'application/json', **(headers or {})})
         with urllib.request.urlopen(req, timeout=3) as response:
             return response.status, json.loads(response.read())
 
@@ -727,9 +728,9 @@ class ServerTests(TempFixture):
         status = self.call('/api/status')[1]
         self.assertEqual(len(status['jobs']), 1)
         self.assertEqual(status['version'], __version__)
-        self.call('/api/settings', {'plex':{'token':'secret'}})
+        self.call('/api/settings', {'jellyfin':{'token':'secret'}})
         settings = self.call('/api/settings')[1]
-        self.assertTrue(settings['plex']['token_set'])
+        self.assertTrue(settings['jellyfin']['token_set'])
         self.assertNotIn('secret', json.dumps(settings))
 
     def test_http_stop_resume_remove_and_strict_cleanup_options(self):
@@ -786,9 +787,9 @@ class ServerTests(TempFixture):
             self.assertIn("frame-ancestors 'none'", response.headers['Content-Security-Policy'])
         with urllib.request.urlopen(self.url+'/jobs.js') as response:
             self.assertEqual(response.status, 200)
-            self.assertIn(b'PlexPortJobs', response.read())
+            self.assertIn(b'JellyPortJobs', response.read())
         with self.assertRaises(urllib.error.HTTPError) as missing:
-            urllib.request.urlopen(self.url+'/../data/plexport.sqlite')
+            urllib.request.urlopen(self.url+'/../data/jellyport.sqlite')
         self.assertEqual(missing.exception.code, 404)
         missing.exception.close()
 
@@ -803,7 +804,7 @@ class ServerTests(TempFixture):
             self.assertEqual(denied.exception.code, 401)
             denied.exception.close()
             auth = 'Basic '+base64.b64encode(b'admin:private').decode()
-            with urllib.request.urlopen(urllib.request.Request(url, headers={'Authorization':auth,'X-PlexPort':'1'})) as response:
+            with urllib.request.urlopen(urllib.request.Request(url, headers={'Authorization':auth,'X-JellyPort':'1'})) as response:
                 self.assertEqual(response.status, 200)
         finally:
             protected.shutdown()

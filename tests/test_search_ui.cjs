@@ -4,7 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 
-const source = fs.readFileSync(path.join(__dirname,'../plexport/static/app.js'),'utf8');
+const source = fs.readFileSync(path.join(__dirname,'../jellyport/static/app.js'),'utf8');
 const start = source.indexOf("$('#search-form').addEventListener('submit',async event=>{");
 const end = source.indexOf("\n$('#scan-button')",start);
 assert.ok(start>=0 && end>start,'actual search submit handler must be available');

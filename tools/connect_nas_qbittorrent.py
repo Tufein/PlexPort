@@ -32,12 +32,12 @@ def main():
     if os.geteuid() != 0:
         raise SystemExit('Voer dit uit als NAS-beheerder.')
     assert mounts('ix-qbittorrent-qbittorrent-1')['/downloads'] == DOWNLOADS
-    assert mounts('ix-plexport-plexport-1')['/downloads'] == DOWNLOADS
+    assert mounts('ix-jellyport-jellyport-1')['/downloads'] == DOWNLOADS
     with urllib.request.urlopen(URL + '/api/v2/app/version', timeout=10) as r:
         version = r.read().decode()
-    compose = json.loads(run('midclt', 'call', 'app.config', 'plexport'))
+    compose = json.loads(run('midclt', 'call', 'app.config', 'jellyport'))
     updated = copy.deepcopy(compose)
-    env = updated['services']['plexport']['environment']
+    env = updated['services']['jellyport']['environment']
     env.update({'DOWNLOADER_TYPE': 'qbittorrent', 'QBITTORRENT_URL': URL,
                 'QBITTORRENT_USER': '', 'DOWNLOADER_ROOT': '/downloads'})
     backups = BASE / 'backups'
@@ -48,53 +48,53 @@ def main():
     compose_file = backup / 'compose-before.json'
     compose_file.write_text(json.dumps(compose))
     os.chmod(compose_file, 0o600)
-    dbpath = BASE / 'data/plexport.sqlite'
+    dbpath = BASE / 'data/jellyport.sqlite'
     backup_ready = False
     try:
-        run('midclt', 'call', '--job', 'app.stop', 'plexport')
-        with sqlite3.connect(dbpath) as source, sqlite3.connect(backup / 'plexport.sqlite') as target:
+        run('midclt', 'call', '--job', 'app.stop', 'jellyport')
+        with sqlite3.connect(dbpath) as source, sqlite3.connect(backup / 'jellyport.sqlite') as target:
             source.backup(target)
         backup_ready = True
-        os.chmod(backup / 'plexport.sqlite', 0o600)
+        os.chmod(backup / 'jellyport.sqlite', 0o600)
         sys.path.insert(0, str(BASE / 'code'))
-        from plexport.core import Store
+        from jellyport.core import Store
         store = Store(BASE / 'data')
         store.save_settings({'downloader': {'type': 'qbittorrent', 'url': URL,
                              'username': '', 'password': '', 'remote_root': '/downloads',
                              'local_root': '/downloads'}})
-        run('midclt', 'call', '--job', 'app.update', 'plexport',
+        run('midclt', 'call', '--job', 'app.update', 'jellyport',
             json.dumps({'custom_compose_config': updated}))
-        state = json.loads(run('midclt', 'call', 'app.get_instance', 'plexport'))['state']
+        state = json.loads(run('midclt', 'call', 'app.get_instance', 'jellyport'))['state']
         if state != 'RUNNING':
-            run('midclt', 'call', '--job', 'app.start', 'plexport')
+            run('midclt', 'call', '--job', 'app.start', 'jellyport')
     except Exception:
         # Restore the known configuration and database before reporting failure.
-        run('midclt', 'call', '--job', 'app.stop', 'plexport')
+        run('midclt', 'call', '--job', 'app.stop', 'jellyport')
         if backup_ready:
-            with sqlite3.connect(backup / 'plexport.sqlite') as source, sqlite3.connect(dbpath) as target:
+            with sqlite3.connect(backup / 'jellyport.sqlite') as source, sqlite3.connect(dbpath) as target:
                 source.backup(target)
-        run('midclt', 'call', '--job', 'app.update', 'plexport',
+        run('midclt', 'call', '--job', 'app.update', 'jellyport',
             json.dumps({'custom_compose_config': compose}))
-        run('midclt', 'call', '--job', 'app.start', 'plexport')
+        run('midclt', 'call', '--job', 'app.start', 'jellyport')
         raise
-    assert mounts('ix-plexport-plexport-1')['/downloads'] == DOWNLOADS
+    assert mounts('ix-jellyport-jellyport-1')['/downloads'] == DOWNLOADS
     # Check from the actual application process environment, as its own UID.
     check = '''import json, os, tempfile
 from pathlib import Path
-from plexport.core import Store
-from plexport.integrations import client
+from jellyport.core import Store
+from jellyport.integrations import client
 c=Store('/data').settings()
 paths=[c['downloader']['local_root'],c['library']['movies'],c['library']['tv']]
 for p in paths:
-    with tempfile.NamedTemporaryFile(prefix='.plexport-write-check-',dir=p): pass
+    with tempfile.NamedTemporaryFile(prefix='.jellyport-write-check-',dir=p): pass
 print(json.dumps({'connection':client(c['downloader']).test(),'paths':paths,'uid':os.getuid(),'remote_root':c['downloader']['remote_root']}))
 '''
-    checked = json.loads(run('docker', 'exec', 'ix-plexport-plexport-1', 'python', '-c', check))
-    marker = '.plexport-map-test-' + uuid.uuid4().hex
+    checked = json.loads(run('docker', 'exec', 'ix-jellyport-jellyport-1', 'python', '-c', check))
+    marker = '.jellyport-map-test-' + uuid.uuid4().hex
     try:
         run('docker', 'exec', 'ix-qbittorrent-qbittorrent-1', 'sh', '-c',
             'umask 077; printf shared-download-map > /downloads/' + marker)
-        seen = run('docker', 'exec', 'ix-plexport-plexport-1', 'python', '-c',
+        seen = run('docker', 'exec', 'ix-jellyport-jellyport-1', 'python', '-c',
                    "from pathlib import Path; print(Path('/downloads/" + marker + "').read_text())").strip()
         assert seen == 'shared-download-map'
     finally:

@@ -15,7 +15,7 @@ parser.add_argument('--init-new-key', action='store_true',
 arguments = parser.parse_args()
 private = root / '.signing'
 properties = private / 'signing.properties'
-key = private / 'plexport-release.jks'
+key = private / 'jellyport-release.jks'
 if properties.exists() and key.exists():
     raise SystemExit(0)
 if properties.exists() or key.exists():
@@ -31,17 +31,17 @@ if not keytool:
 private.mkdir(exist_ok=True, mode=0o700)
 os.chmod(private, 0o700)
 password = secrets.token_hex(32)
-with tempfile.NamedTemporaryFile(mode='w', prefix='plexport-signing-') as temporary:
+with tempfile.NamedTemporaryFile(mode='w', prefix='jellyport-signing-') as temporary:
     temporary.write(password + '\n')
     temporary.flush()
     subprocess.run([
         keytool, '-genkeypair', '-keystore', str(key), '-storetype', 'JKS',
         '-storepass:file', temporary.name, '-keypass:file', temporary.name,
-        '-alias', 'plexport', '-keyalg', 'RSA', '-keysize', '3072', '-validity', '10000',
-        '-dname', 'CN=PlexPort Local, OU=Personal NAS App, O=PlexPort', '-noprompt',
+        '-alias', 'jellyport', '-keyalg', 'RSA', '-keysize', '3072', '-validity', '10000',
+        '-dname', 'CN=JellyPort Local, OU=Personal NAS App, O=JellyPort', '-noprompt',
     ], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 os.chmod(key, 0o600)
 with os.fdopen(os.open(properties, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600), 'w') as output:
-    output.write('storeFile=.signing/plexport-release.jks\n')
-    output.write(f'storePassword={password}\nkeyAlias=plexport\nkeyPassword={password}\n')
+    output.write('storeFile=.signing/jellyport-release.jks\n')
+    output.write(f'storePassword={password}\nkeyAlias=jellyport\nkeyPassword={password}\n')
 print('Lokale ondertekening aangemaakt. Bewaar de map android/.signing voor toekomstige updates.')

@@ -8,6 +8,6 @@ __pycache__
 *.pyc
 android
 verification
-PlexPort 2
-PlexPort-NAS.zip
-PlexPort-TrueNAS.zip
+JellyPort 2
+JellyPort-NAS.zip
+JellyPort-TrueNAS.zip

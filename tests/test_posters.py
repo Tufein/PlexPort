@@ -13,9 +13,9 @@ import unittest
 from unittest.mock import patch
 import urllib.parse
 
-from plexport.core import Store
-from plexport import posters
-from plexport.server import create_server
+from jellyport.core import Store
+from jellyport import posters
+from jellyport.server import create_server
 
 
 JPEG = b'\xff\xd8\xff\xe0example-poster\xff\xd9'
@@ -59,7 +59,7 @@ class PosterTests(unittest.TestCase):
         self.cache = posters.PosterCache()
 
     def test_exact_title_year_and_category_then_local_cache(self):
-        with patch('plexport.posters.read_public', side_effect=[feed(), JPEG]) as read:
+        with patch('jellyport.posters.read_public', side_effect=[feed(), JPEG]) as read:
             result = self.cache.lookup('  EXAMPLE  ', '2020', 'movie')
             self.assertRegex(result['image_url'], r'^/posters/[a-f0-9]{64}\.jpg$')
             self.assertEqual(result['source_url'], CATALOG)
@@ -70,7 +70,7 @@ class PosterTests(unittest.TestCase):
             self.assertEqual(read.call_count, 2)
         key = result['image_url'].split('/')[-1][:-4]
         self.assertEqual(self.cache.image(key), JPEG)
-        with patch('plexport.posters.read_public', side_effect=[feed(), JPEG]) as read:
+        with patch('jellyport.posters.read_public', side_effect=[feed(), JPEG]) as read:
             self.cache.lookup('Example', '2020', 'tv')
             self.assertIn('Search=TV+Example', read.call_args_list[0].args[0])
 
@@ -78,10 +78,10 @@ class PosterTests(unittest.TestCase):
         entries = [('Example(2020)', CATALOG, '/Media/PosterS/000000123_Small.jpg'),
                    ('Example(2024)', CATALOG.replace('123', '456'), '/Media/PosterS/000000456_Small.jpg')]
         for title, year in [('Example', ''), ('Example', '2022'), ('Exampl', '2020')]:
-            with self.subTest(title=title, year=year), patch('plexport.posters.read_public', return_value=feed(entries)) as read:
+            with self.subTest(title=title, year=year), patch('jellyport.posters.read_public', return_value=feed(entries)) as read:
                 self.assertEqual(posters.PosterCache().lookup(title, year), {'image_url': ''})
                 self.assertEqual(read.call_count, 1)
-        with patch('plexport.posters.read_public', side_effect=[feed(entries), JPEG]) as read:
+        with patch('jellyport.posters.read_public', side_effect=[feed(entries), JPEG]) as read:
             self.assertTrue(self.cache.lookup('Example', '2024')['image_url'])
             self.assertIn('000000456_Small.jpg', read.call_args_list[1].args[0])
 
@@ -95,22 +95,22 @@ class PosterTests(unittest.TestCase):
                       '/Media/PosterS/000000123_Small.jpg?url=http://localhost/',
                       'https://watchsomuch.to/Media/PosterS/000000123_Small.jpg#fragment']
         for image in bad_images:
-            with self.subTest(image=image), patch('plexport.posters.read_public', return_value=feed([('Example(2020)', CATALOG, image)])) as read:
+            with self.subTest(image=image), patch('jellyport.posters.read_public', return_value=feed([('Example(2020)', CATALOG, image)])) as read:
                 self.assertEqual(posters.PosterCache().lookup('Example', '2020'), {'image_url': ''})
                 self.assertEqual(read.call_count, 1)
         for url in [CATALOG.replace('watchsomuch.to', 'localhost'), CATALOG + '?x=1', CATALOG.replace('https:', 'http:')]:
-            with self.subTest(url=url), patch('plexport.posters.read_public', return_value=feed([('Example(2020)', url, IMAGE)])) as read:
+            with self.subTest(url=url), patch('jellyport.posters.read_public', return_value=feed([('Example(2020)', url, IMAGE)])) as read:
                 self.assertEqual(posters.PosterCache().lookup('Example', '2020'), {'image_url': ''})
                 self.assertEqual(read.call_count, 1)
 
     def test_offline_or_missing_artwork_is_optional_and_negative_cached(self):
         for value in [TimeoutError(), b'<html>Blocked</html>', b'not xml']:
-            with self.subTest(value=value), patch('plexport.posters.read_public', side_effect=value if isinstance(value, Exception) else None, return_value=value) as read:
+            with self.subTest(value=value), patch('jellyport.posters.read_public', side_effect=value if isinstance(value, Exception) else None, return_value=value) as read:
                 cache = posters.PosterCache()
                 self.assertEqual(cache.lookup('Example', '2020'), {'image_url': ''})
                 self.assertEqual(cache.lookup('Example', '2020'), {'image_url': ''})
                 self.assertEqual(read.call_count, 1)
-                with patch('plexport.posters.time.monotonic', return_value=time.monotonic() + 301):
+                with patch('jellyport.posters.time.monotonic', return_value=time.monotonic() + 301):
                     cache.lookup('Example', '2020')
                 self.assertEqual(read.call_count, 2)
 
@@ -122,7 +122,7 @@ class PosterTests(unittest.TestCase):
                 self.assertTrue(release.wait(2))
                 return feed()
             return JPEG
-        with patch('plexport.posters.read_public', side_effect=read) as request, ThreadPoolExecutor(max_workers=4) as pool:
+        with patch('jellyport.posters.read_public', side_effect=read) as request, ThreadPoolExecutor(max_workers=4) as pool:
             first = pool.submit(self.cache.lookup, 'Example', '2020')
             self.assertTrue(started.wait(1))
             duplicate = pool.submit(self.cache.lookup, 'Example', '2020')
@@ -140,28 +140,28 @@ class PosterTests(unittest.TestCase):
             with lock:
                 active -= 1
             return b'<rss><channel/></rss>'
-        with patch('plexport.posters.read_public', side_effect=concurrent), ThreadPoolExecutor(max_workers=6) as pool:
+        with patch('jellyport.posters.read_public', side_effect=concurrent), ThreadPoolExecutor(max_workers=6) as pool:
             list(pool.map(self.cache.lookup, [f'Example {n}' for n in range(6)]))
         self.assertLessEqual(peak, 2)
 
     def test_memory_eviction_invalidates_metadata_without_arbitrary_fetches(self):
-        with patch('plexport.posters.IMAGE_COUNT_LIMIT', 1), patch('plexport.posters.METADATA_LIMIT', 1):
-            with patch('plexport.posters.read_public', side_effect=[feed(), JPEG]):
+        with patch('jellyport.posters.IMAGE_COUNT_LIMIT', 1), patch('jellyport.posters.METADATA_LIMIT', 1):
+            with patch('jellyport.posters.read_public', side_effect=[feed(), JPEG]):
                 first = self.cache.lookup('Example', '2020')
             second_feed = feed([('Other(2020)', CATALOG.replace('123', '456'), '/Media/PosterS/000000456_Small.jpg')])
-            with patch('plexport.posters.read_public', side_effect=[second_feed, JPEG]):
+            with patch('jellyport.posters.read_public', side_effect=[second_feed, JPEG]):
                 self.cache.lookup('Other', '2020')
             self.assertEqual(len(self.cache.metadata), 1)
             self.assertEqual(len(self.cache.images), 1)
             self.assertEqual(self.cache.image_bytes, len(JPEG))
             self.assertIsNone(self.cache.image(first['image_url'].split('/')[-1][:-4]))
-            with patch('plexport.posters.read_public') as read:
+            with patch('jellyport.posters.read_public') as read:
                 self.assertIsNone(self.cache.image('http://localhost/private'))
                 self.assertIsNone(self.cache.image('a' * 64))
                 read.assert_not_called()
 
     def test_invalid_lookup_parameters_fail_before_network_access(self):
-        with patch('plexport.posters.read_public') as read:
+        with patch('jellyport.posters.read_public') as read:
             for title, year, kind in [('', '', 'movie'), ('x' * 201, '', 'movie'), ('Example', '1887', 'movie'),
                                       ('Example', '2200', 'movie'), ('Example', '20x0', 'movie'), ('Example', '', 'book')]:
                 with self.subTest(title=title, year=year, kind=kind), self.assertRaises(ValueError):
@@ -174,20 +174,20 @@ class PosterTests(unittest.TestCase):
                  Response(b'\xff\xd8\xff' + b'x' * posters.IMAGE_LIMIT),
                  Response(JPEG, url='https://localhost/private')]
         for response in cases:
-            with self.subTest(response=response), patch('plexport.posters.urllib.request.build_opener') as build:
+            with self.subTest(response=response), patch('jellyport.posters.urllib.request.build_opener') as build:
                 build.return_value.open.return_value = response
                 with self.assertRaises(ValueError):
                     posters.read_public(IMAGE, posters.IMAGE_LIMIT, image=True)
                 self.assertEqual(build.return_value.open.call_args.kwargs['timeout'], 6)
                 self.assertIsInstance(build.call_args.args[0], posters.NoRedirect)
         response = Response(JPEG)
-        with patch('plexport.posters.urllib.request.build_opener') as build:
+        with patch('jellyport.posters.urllib.request.build_opener') as build:
             build.return_value.open.return_value = response
             self.assertEqual(posters.read_public(IMAGE, posters.IMAGE_LIMIT, image=True), JPEG)
             self.assertEqual(response.requested, [posters.IMAGE_LIMIT + 1])
         self.assertIsNone(posters.NoRedirect().redirect_request(None, None, 302, 'Found', {}, 'http://localhost/'))
         response = Response(b'x' * (posters.FEED_LIMIT + 1), url=CATALOG, content_type='application/rss+xml')
-        with patch('plexport.posters.urllib.request.build_opener') as build:
+        with patch('jellyport.posters.urllib.request.build_opener') as build:
             build.return_value.open.return_value = response
             with self.assertRaises(ValueError):
                 posters.read_public(CATALOG, posters.FEED_LIMIT)
@@ -225,7 +225,7 @@ class PosterHTTPTests(unittest.TestCase):
         self.server, _ = create_server('127.0.0.1', 0, Store(Path(self.directory.name)), password='test-password')
         self.thread = threading.Thread(target=self.server.serve_forever, daemon=True)
         self.thread.start()
-        self.headers = {'Authorization': 'Basic ' + base64.b64encode(b'admin:test-password').decode(), 'X-PlexPort': '1'}
+        self.headers = {'Authorization': 'Basic ' + base64.b64encode(b'admin:test-password').decode(), 'X-JellyPort': '1'}
 
     def tearDown(self):
         self.server.shutdown()
@@ -243,7 +243,7 @@ class PosterHTTPTests(unittest.TestCase):
 
     def test_metadata_and_images_are_authenticated_and_only_cached_images_are_served(self):
         path = '/api/artwork?title=Example&year=2020&kind=movie'
-        with patch('plexport.posters.read_public', side_effect=[feed(), JPEG]) as read:
+        with patch('jellyport.posters.read_public', side_effect=[feed(), JPEG]) as read:
             self.assertEqual(self.call(path)[0], 401)
             self.assertEqual(self.call(path, {'Authorization': self.headers['Authorization']})[0], 403)
             code, headers, body = self.call(path, self.headers)
@@ -263,7 +263,7 @@ class PosterHTTPTests(unittest.TestCase):
             self.assertEqual(read.call_count, 2)
 
     def test_cross_origin_invalid_input_and_offline_metadata(self):
-        with patch('plexport.posters.read_public', side_effect=TimeoutError()) as read:
+        with patch('jellyport.posters.read_public', side_effect=TimeoutError()) as read:
             path = '/api/artwork?title=Example&year=2020&kind=movie'
             self.assertEqual(self.call(path, dict(self.headers, Origin='https://evil.example'))[0], 403)
             for path in ['/api/artwork', '/api/artwork?title=Example&year=199&kind=movie', '/api/artwork?title=Example&kind=book']:

@@ -1,11 +1,11 @@
-# Start PlexPort on a Mac
+# Start JellyPort on a Mac
 
 [Back to the main page](../README.md)
 
-You need **Python 3.11 or newer**, **qBittorrent or Transmission**, and accessible Plex media folders. If Python is not installed, get it from [python.org](https://www.python.org/downloads/macos/).
+You need **Python 3.11 or newer**, **qBittorrent or Transmission**, and accessible Jellyfin media folders. If Python is not installed, get it from [python.org](https://www.python.org/downloads/macos/).
 
-1. [Download PlexPort](https://github.com/Tufein/PlexPort/archive/refs/heads/main.zip) and extract the ZIP.
-2. Double-click **Start PlexPort.command** in the extracted folder. PlexPort opens in your browser. Keep its terminal window open while the app needs to process downloads.
+1. [Download JellyPort](https://github.com/Tufein/JellyPort/archive/refs/heads/main.zip) and extract the ZIP.
+2. Double-click **Start JellyPort.command** in the extracted folder. JellyPort opens in your browser. Keep its terminal window open while the app needs to process downloads.
 3. Open **Instellingen (Settings)** and enter your downloader and folders. If your media is on a NAS, connect to the shared folder in Finder first.
 4. Click **Alles controleren (Check everything)** and optionally add a search source.
 

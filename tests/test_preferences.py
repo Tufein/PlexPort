@@ -4,7 +4,7 @@ from pathlib import Path
 import tempfile
 import unittest
 
-from plexport.core import Store, defaults, merge_settings, new_job, public_settings
+from jellyport.core import Store, defaults, merge_settings, new_job, public_settings
 
 
 class SearchPreferencesTests(unittest.TestCase):
@@ -18,8 +18,8 @@ class SearchPreferencesTests(unittest.TestCase):
                                          local_root=str(self.root / 'downloads'), remote_root='/downloads',
                                          username='test-user', password='test-downloader-secret')
         self.config['library'] = {'movies': str(self.root / 'movies'), 'tv': str(self.root / 'tv')}
-        self.config['plex'].update(url='http://plex.invalid:32400', token='test-plex-secret',
-                                   movie_section='1', tv_section='2')
+        self.config['jellyfin'].update(url='http://jellyfin.invalid:32400', token='test-jellyfin-secret',
+                                   movie_section='a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1', tv_section='b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2')
         self.config['sources'] = [{'id': 'test-source', 'name': 'Test source', 'type': 'torznab',
                                    'url': 'https://indexer.invalid/api', 'api_key': 'test-source-secret'}]
         self.store.save_settings(self.config)
@@ -64,15 +64,15 @@ class SearchPreferencesTests(unittest.TestCase):
         response = self.store.save_settings({'preferences': selected})
         restarted = Store(self.root / 'state')
         self.assertEqual(restarted.settings()['preferences'], selected)
-        for key in ('downloader', 'library', 'plex', 'sources'):
+        for key in ('downloader', 'library', 'jellyfin', 'sources'):
             self.assertEqual(restarted.settings()[key], before[key])
         self.assertEqual(restarted.jobs(), [job])
         self.assertEqual(response['preferences'], selected)
         self.assertTrue(response['downloader']['password_set'])
-        self.assertTrue(response['plex']['token_set'])
+        self.assertTrue(response['jellyfin']['token_set'])
         self.assertTrue(response['sources'][0]['api_key_set'])
         self.assertNotIn('password', response['downloader'])
-        self.assertNotIn('token', response['plex'])
+        self.assertNotIn('token', response['jellyfin'])
         self.assertNotIn('api_key', response['sources'][0])
 
     def test_partial_updates_and_old_settings_clients_keep_saved_preferences(self):

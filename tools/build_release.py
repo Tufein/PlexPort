@@ -15,7 +15,7 @@ def git(*args):
 
 def build(ref='HEAD', output='dist'):
     commit = git('rev-parse', '--verify', ref + '^{commit}').decode().strip()
-    version_source = git('show', commit + ':plexport/__init__.py').decode()
+    version_source = git('show', commit + ':jellyport/__init__.py').decode()
     version = re.search(r"^__version__ = ['\"](\d+\.\d+\.\d+)['\"]$", version_source, re.M)
     if not version:
         raise ValueError('The revision must declare a semantic server version')
@@ -40,11 +40,11 @@ def build(ref='HEAD', output='dist'):
                        for name, data, _ in records).encode()
     destination = Path(output)
     destination.mkdir(parents=True, exist_ok=True)
-    archive = destination / ('PlexPort-' + version + '.tar.gz')
+    archive = destination / ('JellyPort-' + version + '.tar.gz')
     with archive.open('wb') as raw, gzip.GzipFile(filename='', fileobj=raw, mode='wb', mtime=0) as compressed:
         with tarfile.open(fileobj=compressed, mode='w', format=tarfile.PAX_FORMAT) as bundle:
             for name, data, mode in records + [('SHA256SUMS', manifest, 0o644)]:
-                member = tarfile.TarInfo('PlexPort-' + version + '/' + name)
+                member = tarfile.TarInfo('JellyPort-' + version + '/' + name)
                 member.size, member.mode, member.mtime = len(data), mode, 0
                 member.uid = member.gid = 0
                 member.uname = member.gname = ''

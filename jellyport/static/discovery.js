@@ -119,5 +119,5 @@
 
   const api = { quality, select, recommend, preferences, readPreferences, readFilters, writeFilters, group, matches };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
-  else root.PlexPortDiscovery = api;
+  else root.JellyPortDiscovery = api;
 })(typeof window === 'undefined' ? globalThis : window);

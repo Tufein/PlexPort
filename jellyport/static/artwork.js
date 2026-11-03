@@ -15,7 +15,7 @@
   function pump(){
     while(running<3&&queue.length){
       const task=queue.shift();running++;
-      fetch(task.path,{headers:{'X-PlexPort':'1'}}).then(response=>response.ok?response.json():null).then(safeMetadata).catch(()=>null).then(value=>{remember(task.key,value);pending.delete(task.key);task.resolve(value);}).finally(()=>{running--;pump();});
+      fetch(task.path,{headers:{'X-JellyPort':'1'}}).then(response=>response.ok?response.json():null).then(safeMetadata).catch(()=>null).then(value=>{remember(task.key,value);pending.delete(task.key);task.resolve(value);}).finally(()=>{running--;pump();});
     }
   }
   function lookup(title,year,kind){
@@ -45,5 +45,5 @@
       if(observer)observer.observe(node);else load(node);
     }
   }
-  root.PlexPortArtwork={...helpers,mount};
+  root.JellyPortArtwork={...helpers,mount};
 })(typeof window==='undefined'?globalThis:window);
