@@ -36,7 +36,7 @@ services:
           create_host_path: false
       # Voeg .plexport-downloads/* toe aan .ignore in de filmmap.
       - type: bind
-        source: /mnt/tank/media/Movies/.plexport-downloads
+        source: /Home/Downloads
         target: /downloads
         bind:
           create_host_path: false
