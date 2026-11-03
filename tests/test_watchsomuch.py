@@ -4,9 +4,9 @@ import unittest
 from unittest.mock import Mock, patch
 import urllib.parse
 
-from plexport.core import Store, Worker, defaults, merge_settings, new_job
-from plexport.integrations import search_source
-from plexport import watchsomuch as wsm
+from jellyport.core import Store, Worker, defaults, merge_settings, new_job
+from jellyport.integrations import search_source
+from jellyport import watchsomuch as wsm
 
 MAGNET = 'magnet:?xt=urn:btih:' + 'a' * 40 + '&dn=Example'
 LINK = wsm.BASE + '/Movie/123-HQ/Download-456/Example'
@@ -23,7 +23,7 @@ class WatchSoMuchTests(unittest.TestCase):
 
     def test_search_uses_kind_keeps_variants_and_does_not_fetch_magnets(self):
         for kind, endpoint, keyword in [('movie', 'ajMovieTorrents', 'Movies'), ('tv', 'ajTVTorrents', 'TV')]:
-            with self.subTest(kind=kind), patch('plexport.watchsomuch.fetch', side_effect=[RSS, ROWS]) as fetch:
+            with self.subTest(kind=kind), patch('jellyport.watchsomuch.fetch', side_effect=[RSS, ROWS]) as fetch:
                 result = search_source({'type':'watchsomuch', 'name':'My source'}, 'Example', kind)
                 self.assertEqual(len(result), 1)
                 self.assertEqual(result[0]['seeders'], 12)
@@ -37,17 +37,17 @@ class WatchSoMuchTests(unittest.TestCase):
                 self.assertEqual(params['Search'], [keyword + ' Example'])
                 self.assertEqual(fetch.call_args_list[1].args[0], '/Movies/' + endpoint + '.aspx?mid=123')
                 self.assertEqual(fetch.call_count, 2)
-            with patch('plexport.watchsomuch.fetch') as fetch:
+            with patch('jellyport.watchsomuch.fetch') as fetch:
                 cached = wsm.search({'name':'Renamed'}, 'Example', kind)
                 self.assertEqual(cached[0]['source'], 'Renamed')
                 fetch.assert_not_called()
 
     def test_search_bounds_requests_and_rejects_non_feed(self):
         many = RSS.replace('</channel>', RSS[RSS.index('<item>'):RSS.index('</item>')+7] * 8 + '</channel>')
-        with patch('plexport.watchsomuch.fetch', side_effect=[many] + [ROWS] * 5) as fetch:
+        with patch('jellyport.watchsomuch.fetch', side_effect=[many] + [ROWS] * 5) as fetch:
             self.assertEqual(len(wsm.search({'name':'Source'}, 'Example', 'movie')), 1)
             self.assertEqual(fetch.call_count, 6)
-        with patch('plexport.watchsomuch.fetch', return_value='<html>Sign in</html>'):
+        with patch('jellyport.watchsomuch.fetch', return_value='<html>Sign in</html>'):
             with self.assertRaisesRegex(ValueError, 'zoekfeed'):
                 wsm.search({'name':'Source'}, 'Other', 'movie')
 
@@ -68,26 +68,26 @@ class WatchSoMuchTests(unittest.TestCase):
             mid = path.rsplit('mid=', 1)[1]
             return rows % (mid, mid)
 
-        with patch('plexport.watchsomuch.fetch', side_effect=fetch):
+        with patch('jellyport.watchsomuch.fetch', side_effect=fetch):
             result = wsm.search({'name': 'Source'}, 'tom hanks', 'movie', 'actor')
         self.assertEqual({r['library_title'] for r in result}, {'Big', 'Elvis'})
         self.assertEqual(result[0]['cast'].split(', ')[0].casefold() in ('tom hanks', 't\u00f4m hanks'), True)
         self.assertEqual(len(calls), 3)  # one feed plus the two credited films
         # Actor results are cached separately from title results.
-        with patch('plexport.watchsomuch.fetch', side_effect=[RSS, ROWS]):
+        with patch('jellyport.watchsomuch.fetch', side_effect=[RSS, ROWS]):
             self.assertEqual(wsm.search({'name': 'Source'}, 'tom hanks', 'movie')[0]['library_title'], 'Example')
         self.assertEqual(wsm.cast_of('<br />Starring: A B, C D<br />'), ['A B', 'C D'])
         self.assertEqual(wsm.cast_of('no cast'), [])
 
     def test_resolve_uses_selected_magnet_and_fails_closed(self):
         html = '<a href="magnet:?xt=urn:btih:' + 'b'*40 + '">Related</a><input id="txtMagnetLink" value="' + MAGNET.replace('&', '&amp;') + '">'
-        with patch('plexport.watchsomuch.fetch', return_value=html) as fetch:
+        with patch('jellyport.watchsomuch.fetch', return_value=html) as fetch:
             self.assertEqual(wsm.resolve(LINK), MAGNET)
             self.assertEqual(fetch.call_args.args[0], '/Movies/ajTorrentDetails.aspx?movie=123&key=456')
         for html in ('<html>Blocked</html>', '<input id="txtMagnetLink" value="https://other.invalid">', '<input id="txtMagnetLink" value="magnet:?xt=urn:btih:bad">'):
-            with patch('plexport.watchsomuch.fetch', return_value=html), self.assertRaisesRegex(ValueError, 'magnetlink'):
+            with patch('jellyport.watchsomuch.fetch', return_value=html), self.assertRaisesRegex(ValueError, 'magnetlink'):
                 wsm.resolve(LINK)
-        with patch('plexport.watchsomuch.fetch') as fetch:
+        with patch('jellyport.watchsomuch.fetch') as fetch:
             for url in (MAGNET, LINK.replace('watchsomuch.to', 'other.invalid'), LINK.replace('https:', 'http:')):
                 self.assertEqual(wsm.resolve(url), url)
             fetch.assert_not_called()
@@ -114,7 +114,7 @@ class WatchSoMuchTests(unittest.TestCase):
             store = Store(Path(folder) / 'data')
             downloader = Mock()
             downloader.add.return_value = 'torrent-id'
-            with patch('plexport.watchsomuch.resolve', return_value=MAGNET) as resolve, patch('plexport.core.client', return_value=downloader):
+            with patch('jellyport.watchsomuch.resolve', return_value=MAGNET) as resolve, patch('jellyport.core.client', return_value=downloader):
                 Worker(store).step(job)
                 resolve.assert_called_once_with(LINK)
             self.assertEqual(downloader.add.call_args.args[0]['link'], MAGNET)

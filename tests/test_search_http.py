@@ -9,8 +9,8 @@ import unittest
 from unittest.mock import Mock, patch
 import urllib.parse
 
-from plexport.core import DEFAULT_PREFERENCES, Store, defaults, new_job
-from plexport.server import create_server
+from jellyport.core import DEFAULT_PREFERENCES, Store, defaults, new_job
+from jellyport.server import create_server
 
 
 class SearchAndPreferencesHTTPTests(unittest.TestCase):
@@ -22,7 +22,7 @@ class SearchAndPreferencesHTTPTests(unittest.TestCase):
                                          username='download-user', password='download-test-secret',
                                          local_root=str(self.root / 'downloads'), remote_root='/downloads')
         self.config['library'] = {'movies': str(self.root / 'movies'), 'tv': str(self.root / 'tv')}
-        self.config['plex'].update(url='http://plex.invalid:32400', token='plex-test-secret')
+        self.config['jellyfin'].update(url='http://jellyfin.invalid:32400', token='jellyfin-test-secret')
         self.config['sources'] = [
             {'id': 'a', 'name': 'Source A', 'type': 'torznab', 'url': 'http://source-a.invalid/api', 'api_key': 'source-a-test-secret'},
             {'id': 'b', 'name': 'Source B', 'type': 'torznab', 'url': 'http://source-b.invalid/api', 'api_key': 'source-b-test-secret'},
@@ -47,7 +47,7 @@ class SearchAndPreferencesHTTPTests(unittest.TestCase):
         if authenticated:
             headers['Authorization'] = self.authorization
         if api_header:
-            headers['X-PlexPort'] = '1'
+            headers['X-JellyPort'] = '1'
         if data is not None:
             headers['Content-Type'] = 'application/json'
         connection.request('POST' if data is not None else 'GET', path,
@@ -65,8 +65,8 @@ class SearchAndPreferencesHTTPTests(unittest.TestCase):
             Path(path).mkdir(exist_ok=True)
         downloader = Mock()
         downloader.test.return_value = 'Downloader bereikbaar'
-        with patch('plexport.server.client', return_value=downloader), patch('plexport.server.plex_sections', return_value=[]):
-            for target in ('downloader', 'plex', 'storage'):
+        with patch('jellyport.server.client', return_value=downloader), patch('jellyport.server.jellyfin_sections', return_value=[]):
+            for target in ('downloader', 'jellyfin', 'storage'):
                 self.assertEqual(self.call('/api/test', {'target': target})[0], 200)
         return self.call('/api/status')[1]['checks']
 
@@ -85,7 +85,7 @@ class SearchAndPreferencesHTTPTests(unittest.TestCase):
             ({'downloader': {'remote_root': '/new-downloads'}}, {'downloader'}),
             ({'downloader': {'local_root': str(self.root/'new-downloads')}}, {'downloader', 'storage'}),
             ({'library': {'movies': str(self.root/'new-movies')}}, {'storage'}),
-            ({'plex': {'token': 'changed-token'}}, {'plex'}),
+            ({'jellyfin': {'token': 'changed-token'}}, {'jellyfin'}),
             ({'sources': [{'id': 'w', 'name': 'WatchSoMuch', 'type': 'watchsomuch'}]}, set()),
             ({'preferences': {'quality': '1080'}}, set()),
         ]
@@ -120,7 +120,7 @@ class SearchAndPreferencesHTTPTests(unittest.TestCase):
             return [matches[index], {'title': 'Potter without Harry', 'source': source['name'],
                                      'seeders': 99, 'link': 'magnet:other'}]
 
-        with patch('plexport.server.search_source', side_effect=source_search) as fetch:
+        with patch('jellyport.server.search_source', side_effect=source_search) as fetch:
             status, body = self.search('Harry*Potter', 'tv')
         self.assertEqual(status, 200)
         self.assertEqual(fetch.call_count, 2)
@@ -134,7 +134,7 @@ class SearchAndPreferencesHTTPTests(unittest.TestCase):
         self.config['sources'].append({'id': 'w', 'name': 'WatchSoMuch', 'type': 'watchsomuch', 'url': 'https://watchsomuch.to'})
         self.store.save_settings(self.config)
         row = {'title': 'Big 1080p', 'source': 'WatchSoMuch', 'seeders': 5, 'link': 'x', 'cast': 'Tom Hanks'}
-        with patch('plexport.server.search_source', return_value=[row]) as fetch:
+        with patch('jellyport.server.search_source', return_value=[row]) as fetch:
             status, body = self.call('/api/search?' + urllib.parse.urlencode({'q': 'Tom Hanks', 'kind': 'movie', 'mode': 'actor'}))
         self.assertEqual(status, 200)
         self.assertEqual(fetch.call_count, 1)
@@ -146,7 +146,7 @@ class SearchAndPreferencesHTTPTests(unittest.TestCase):
             self.assertEqual(status, 400)
 
     def test_actor_search_needs_a_watchsomuch_source(self):
-        with patch('plexport.server.search_source') as fetch:
+        with patch('jellyport.server.search_source') as fetch:
             status, body = self.call('/api/search?' + urllib.parse.urlencode({'q': 'Tom Hanks', 'kind': 'movie', 'mode': 'actor'}))
         self.assertEqual(status, 400)
         self.assertIn('WatchSoMuch', body['error'])
@@ -155,7 +155,7 @@ class SearchAndPreferencesHTTPTests(unittest.TestCase):
     def test_wildcard_filter_is_applied_before_global_result_limit(self):
         excluded = [{'title': 'Unrelated movie', 'seeders': 1000 + i, 'link': 'magnet:unrelated'} for i in range(300)]
         selected = {'title': 'Harry Potter', 'seeders': 1, 'link': 'magnet:chosen'}
-        with patch('plexport.server.search_source', side_effect=lambda source, term, kind:
+        with patch('jellyport.server.search_source', side_effect=lambda source, term, kind:
                    excluded if source['id'] == 'a' else [selected]):
             status, body = self.search('Harry*Potter')
         self.assertEqual(status, 200)
@@ -163,7 +163,7 @@ class SearchAndPreferencesHTTPTests(unittest.TestCase):
 
     def test_global_result_limit_remains_bounded_after_wildcard_filter(self):
         rows = [{'title': 'Harry Potter ' + str(i), 'seeders': i, 'link': 'magnet:' + str(i)} for i in range(300)]
-        with patch('plexport.server.search_source', side_effect=lambda source, term, kind: rows if source['id'] == 'a' else []):
+        with patch('jellyport.server.search_source', side_effect=lambda source, term, kind: rows if source['id'] == 'a' else []):
             status, body = self.search('Harry*Potter')
         self.assertEqual(status, 200)
         self.assertEqual(len(body['results']), 250)
@@ -172,7 +172,7 @@ class SearchAndPreferencesHTTPTests(unittest.TestCase):
 
     def test_ordinary_search_preserves_provider_query_and_existing_result_behavior(self):
         row = {'title': 'Another title', 'seeders': 9, 'link': 'magnet:literal-selection'}
-        with patch('plexport.server.search_source', return_value=[row]) as fetch:
+        with patch('jellyport.server.search_source', return_value=[row]) as fetch:
             status, body = self.search('  Spider-Man (2020) [1080p]  ')
         self.assertEqual(status, 200)
         self.assertEqual(body['results'], [row, row])
@@ -181,7 +181,7 @@ class SearchAndPreferencesHTTPTests(unittest.TestCase):
             self.assertEqual(call.args[1:], ('Spider-Man (2020) [1080p]', 'movie'))
 
     def test_invalid_wildcards_and_overlong_query_fail_before_contacting_sources(self):
-        with patch('plexport.server.search_source') as fetch:
+        with patch('jellyport.server.search_source') as fetch:
             for query in ('**', '*?*?', '*a*b*', 'x' * 201):
                 with self.subTest(query=query):
                     status, body = self.search(query)
@@ -190,7 +190,7 @@ class SearchAndPreferencesHTTPTests(unittest.TestCase):
             fetch.assert_not_called()
 
     def test_search_requires_authentication_and_api_header(self):
-        with patch('plexport.server.search_source', return_value=[]) as fetch:
+        with patch('jellyport.server.search_source', return_value=[]) as fetch:
             self.assertEqual(self.search('Star*', authenticated=False)[0], 401)
             self.assertEqual(self.search('Star*', api_header=False)[0], 403)
             fetch.assert_not_called()
@@ -198,7 +198,7 @@ class SearchAndPreferencesHTTPTests(unittest.TestCase):
             self.assertEqual(fetch.call_count, 2)
 
     def test_empty_wildcard_results_keep_explanation_and_partial_source_errors(self):
-        with patch('plexport.server.search_source', return_value=[]):
+        with patch('jellyport.server.search_source', return_value=[]):
             status, body = self.search('Star*')
         self.assertEqual(status, 200)
         self.assertEqual(body['results'], [])
@@ -212,7 +212,7 @@ class SearchAndPreferencesHTTPTests(unittest.TestCase):
                 raise ValueError('Bron tijdelijk niet bereikbaar.')
             return [row]
 
-        with patch('plexport.server.search_source', side_effect=partial):
+        with patch('jellyport.server.search_source', side_effect=partial):
             status, body = self.search('Star*')
         self.assertEqual(status, 200)
         self.assertEqual(body['results'], [row])
@@ -226,7 +226,7 @@ class SearchAndPreferencesHTTPTests(unittest.TestCase):
         before_jobs = self.store.jobs()
         downloader = Mock()
         downloader.test.return_value = 'Downloader bereikbaar'
-        with patch('plexport.server.client', return_value=downloader):
+        with patch('jellyport.server.client', return_value=downloader):
             self.assertEqual(self.call('/api/test', {'target': 'downloader'})[0], 200)
         status, initial = self.call('/api/status')
         self.assertEqual(status, 200)
@@ -239,12 +239,12 @@ class SearchAndPreferencesHTTPTests(unittest.TestCase):
         self.assertEqual(self.call('/api/status')[1]['checks'], initial['checks'])
         self.assertEqual(self.store.jobs(), before_jobs)
         after_config = self.store.settings()
-        for group in ('downloader', 'library', 'plex', 'sources'):
+        for group in ('downloader', 'library', 'jellyfin', 'sources'):
             self.assertEqual(after_config[group], before_config[group])
         self.assertTrue(saved['downloader']['password_set'])
-        self.assertTrue(saved['plex']['token_set'])
+        self.assertTrue(saved['jellyfin']['token_set'])
         self.assertNotIn('password', saved['downloader'])
-        self.assertNotIn('token', saved['plex'])
+        self.assertNotIn('token', saved['jellyfin'])
         self.assertEqual(Store(self.root / 'state').settings()['preferences'], preferences)
 
     def test_legacy_database_exposes_preference_defaults_without_mutating_records_on_read(self):

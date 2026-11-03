@@ -1,6 +1,6 @@
-# Help improve PlexPort
+# Help improve JellyPort
 
-You do not need a technical background to help. [Report a problem](https://github.com/Tufein/PlexPort/issues/new?template=probleem.yml), [suggest a feature](https://github.com/Tufein/PlexPort/issues/new?template=idee.yml), or tell us which instructions are confusing.
+You do not need a technical background to help. [Report a problem](https://github.com/Tufein/JellyPort/issues/new?template=probleem.yml), [suggest a feature](https://github.com/Tufein/JellyPort/issues/new?template=idee.yml), or tell us which instructions are confusing.
 
 Use examples without private access details. Reports in this repository are public. English is welcome.
 
@@ -13,7 +13,7 @@ Run these from the project folder:
 ```sh
 python3 -m unittest discover -s tests -v
 node --test tests/*.cjs
-node --check plexport/static/app.js
+node --check jellyport/static/app.js
 ```
 
 Check new controls in wide and narrow browser layouts and in light and dark mode. See the [technical guide](docs/TECHNISCH.md).

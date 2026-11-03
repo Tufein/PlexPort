@@ -1,5 +1,12 @@
 # What's new?
 
+## Website/server 2.0.0 — November 3, 2026
+
+- **PlexPort is now JellyPort and uses Jellyfin instead of Plex.** Settings use the Jellyfin address (for example `http://192.168.1.75:8096`), a Jellyfin API key (Dashboard → API Keys) and the movie and TV library IDs, which **Opslaan & Jellyfin testen** lists. After an import JellyPort asks Jellyfin to refresh that library. The old Plex token and section numbers are not reused; enter the Jellyfin details once.
+- Existing installations keep working: `PLEXPORT_*` environment variables, an existing `plexport.sqlite` database and tasks, and qBittorrent tags of earlier tasks are still recognised. Docker examples still use the existing `.plexport-app` and `.plexport-downloads` host folders. Use `.ignore` (instead of `.plexignore`) to hide the downloads folder from Jellyfin.
+- **Transmission is the default downloader** (RPC, e.g. `http://192.168.1.75:9091/transmission/rpc`) in the app defaults, Compose examples, `.env.example` and docs. qBittorrent remains supported and existing qBittorrent tasks keep their original downloader.
+- The Android source now uses package `nl.jellyport.app`. This is a different app identity than the published `nl.plexport.app` 1.2.0, so it installs next to it and is not an upgrade. The website still offers the existing APK as `jellyport.apk`; a new native release needs a build with the private signing key.
+
 ## Website/server 1.9.0 — October 19, 2026
 
 - Downloads that are already in your downloader get a **Snelheid (Speed)** menu to cap that one torrent's download speed (unlimited, 1, 2, 5 or 10 MB/s). It works with qBittorrent and Transmission, changes only the chosen torrent and leaves the downloader's global limits and other torrents alone. The limit is stored with the task. This is covered by local fixture tests; it has not been tried against a real downloader or on a physical phone.

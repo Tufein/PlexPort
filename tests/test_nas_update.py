@@ -24,9 +24,9 @@ class NasUpdateTests(unittest.TestCase):
         self.app.mkdir(parents=True)
         self.data.mkdir()
         self.release.mkdir()
-        for name in update_nas.RELEASE_REQUIRED + ('static/plexport.apk',):
-            old = self.app / 'plexport' / name
-            new = self.release / 'plexport' / name
+        for name in update_nas.RELEASE_REQUIRED + ('static/jellyport.apk',):
+            old = self.app / 'jellyport' / name
+            new = self.release / 'jellyport' / name
             old.parent.mkdir(parents=True, exist_ok=True)
             new.parent.mkdir(parents=True, exist_ok=True)
             old.write_bytes(b'old runtime')
@@ -40,7 +40,7 @@ class NasUpdateTests(unittest.TestCase):
         self.media = self.root / 'installation' / 'media' / 'film.mkv'
         self.media.parent.mkdir()
         self.media.write_bytes(b'existing media')
-        self.database = self.data / 'plexport.sqlite'
+        self.database = self.data / 'jellyport.sqlite'
         with sqlite3.connect(self.database) as connection:
             connection.execute('CREATE TABLE tasks (title TEXT)')
             connection.execute('INSERT INTO tasks VALUES (?)', ('Active task',))
@@ -48,7 +48,7 @@ class NasUpdateTests(unittest.TestCase):
 
     def manifest(self):
         records = [f'{update_nas.digest(path)}  {path.relative_to(self.release)}'
-                   for path in sorted((self.release / 'plexport').rglob('*')) if path.is_file()]
+                   for path in sorted((self.release / 'jellyport').rglob('*')) if path.is_file()]
         (self.release / 'SHA256SUMS').write_text('\n'.join(records) + '\n')
 
     def update(self, source=None, sha=None):
@@ -59,12 +59,12 @@ class NasUpdateTests(unittest.TestCase):
             return connection.execute('SELECT title FROM tasks').fetchall()
 
     def test_update_preserves_settings_tasks_media_and_runtime_metadata(self):
-        runtime = self.app / 'plexport'
+        runtime = self.app / 'jellyport'
         runtime.chmod(0o750)
         server = runtime / 'server.py'
         server.chmod(0o640)
         before = server.stat()
-        new = self.release / 'plexport' / 'new_module.py'
+        new = self.release / 'jellyport' / 'new_module.py'
         new.write_text('new module')
         new.chmod(0o600)
         removed = runtime / 'retired.py'
@@ -72,17 +72,17 @@ class NasUpdateTests(unittest.TestCase):
         self.manifest()
         backup = self.update()
         self.assertEqual(server.read_bytes(), b'new runtime')
-        self.assertEqual((runtime / 'static' / 'plexport.apk').read_bytes(), b'new runtime')
+        self.assertEqual((runtime / 'static' / 'jellyport.apk').read_bytes(), b'new runtime')
         self.assertFalse(removed.exists())
         self.assertEqual(server.stat().st_mode & 0o777, 0o640)
         self.assertEqual((server.stat().st_uid, server.stat().st_gid), (before.st_uid, before.st_gid))
         self.assertEqual(runtime.stat().st_mode & 0o777, 0o750)
         self.assertEqual((runtime / 'new_module.py').stat().st_mode & 0o777, 0o644)
         self.assertEqual(backup.stat().st_mode & 0o777, 0o700)
-        self.assertEqual((backup / 'plexport.sqlite').stat().st_mode & 0o777, 0o600)
+        self.assertEqual((backup / 'jellyport.sqlite').stat().st_mode & 0o777, 0o600)
         self.assertEqual(self.tasks(), [('Active task',)])
-        self.assertEqual(self.tasks(backup / 'plexport.sqlite'), [('Active task',)])
-        self.assertEqual((backup / 'code' / 'plexport' / 'retired.py').read_text(), 'old module removed by release')
+        self.assertEqual(self.tasks(backup / 'jellyport.sqlite'), [('Active task',)])
+        self.assertEqual((backup / 'code' / 'jellyport' / 'retired.py').read_text(), 'old module removed by release')
         self.assertEqual(self.compose.read_text(), 'saved configuration and secret')
         self.assertEqual(self.compose.stat().st_mode & 0o777, 0o600)
         self.assertEqual(self.download.read_bytes(), b'existing torrent')
@@ -96,14 +96,14 @@ class NasUpdateTests(unittest.TestCase):
         connection.commit()
         self.assertTrue(Path(str(self.database) + '-wal').exists())
         backup = self.update()
-        self.assertEqual(self.tasks(backup / 'plexport.sqlite'), [('Active task',), ('Committed in WAL',)])
+        self.assertEqual(self.tasks(backup / 'jellyport.sqlite'), [('Active task',), ('Committed in WAL',)])
 
     def test_code_rollback_keeps_tasks_saved_after_restart(self):
         backup = self.update()
         with sqlite3.connect(self.database) as connection:
             connection.execute('INSERT INTO tasks VALUES (?)', ('Task after update',))
         update_nas.rollback(self.app, backup)
-        self.assertEqual((self.app / 'plexport' / 'server.py').read_bytes(), b'old runtime')
+        self.assertEqual((self.app / 'jellyport' / 'server.py').read_bytes(), b'old runtime')
         self.assertEqual(self.tasks(), [('Active task',), ('Task after update',)])
         self.assertEqual(self.compose.read_text(), 'saved configuration and secret')
 
@@ -118,43 +118,43 @@ class NasUpdateTests(unittest.TestCase):
         with patch.object(update_nas.os, 'replace', side_effect=fail_install):
             with self.assertRaisesRegex(OSError, 'storage error'):
                 self.update()
-        self.assertEqual((self.app / 'plexport' / 'server.py').read_bytes(), b'old runtime')
+        self.assertEqual((self.app / 'jellyport' / 'server.py').read_bytes(), b'old runtime')
         self.assertEqual(self.tasks(), [('Active task',)])
-        self.assertEqual(list(self.app.glob('.plexport-update-*')), [])
+        self.assertEqual(list(self.app.glob('.jellyport-update-*')), [])
 
     def test_bad_checksum_fails_before_install_or_backup(self):
-        (self.release / 'plexport' / 'server.py').write_text('tampered')
+        (self.release / 'jellyport' / 'server.py').write_text('tampered')
         with self.assertRaisesRegex(ValueError, 'checksum mismatch'):
             self.update()
         self.assertFalse(self.backups.exists())
-        self.assertEqual((self.app / 'plexport' / 'server.py').read_bytes(), b'old runtime')
+        self.assertEqual((self.app / 'jellyport' / 'server.py').read_bytes(), b'old runtime')
 
     def test_unlisted_runtime_file_is_rejected(self):
-        (self.release / 'plexport' / 'unlisted.py').write_text('unlisted')
+        (self.release / 'jellyport' / 'unlisted.py').write_text('unlisted')
         with self.assertRaisesRegex(ValueError, 'cover every runtime file'):
             self.update()
 
     def test_consistent_manifest_cannot_hide_missing_import_or_frontend_script(self):
         for name in ('__init__.py', 'integrations.py', 'static/jobs.js'):
             with self.subTest(missing=name):
-                source = self.release / 'plexport' / name
+                source = self.release / 'jellyport' / name
                 original = source.read_bytes()
                 source.unlink()
                 self.manifest()
                 with self.assertRaisesRegex(ValueError, 'runtime is incomplete'):
                     self.update()
                 self.assertFalse(self.backups.exists())
-                self.assertEqual((self.app / 'plexport' / 'server.py').read_bytes(), b'old runtime')
+                self.assertEqual((self.app / 'jellyport' / 'server.py').read_bytes(), b'old runtime')
                 source.write_bytes(original)
         self.manifest()
 
     def test_older_installed_runtime_can_be_updated_and_rolled_back(self):
         # Legacy releases need not have the latest jobs renderer or all modules.
-        (self.app / 'plexport' / 'static' / 'jobs.js').unlink()
+        (self.app / 'jellyport' / 'static' / 'jobs.js').unlink()
         backup = self.update()
-        self.assertTrue((self.app / 'plexport' / 'static' / 'jobs.js').is_file())
+        self.assertTrue((self.app / 'jellyport' / 'static' / 'jobs.js').is_file())
         update_nas.rollback(self.app, backup)
-        self.assertFalse((self.app / 'plexport' / 'static' / 'jobs.js').exists())
+        self.assertFalse((self.app / 'jellyport' / 'static' / 'jobs.js').exists())
 
     def test_missing_manifest_and_missing_database_are_rejected(self):
         (self.release / 'SHA256SUMS').unlink()
@@ -162,13 +162,13 @@ class NasUpdateTests(unittest.TestCase):
             self.update()
         self.manifest()
         self.database.unlink()
-        with self.assertRaisesRegex(ValueError, 'Existing plexport.sqlite'):
+        with self.assertRaisesRegex(ValueError, 'Existing jellyport.sqlite'):
             self.update()
-        self.assertEqual((self.app / 'plexport' / 'server.py').read_bytes(), b'old runtime')
+        self.assertEqual((self.app / 'jellyport' / 'server.py').read_bytes(), b'old runtime')
         self.assertEqual(list(self.backups.iterdir()), [])
 
     def test_symlinks_in_release_installation_and_path_parents_are_rejected(self):
-        link = self.release / 'plexport' / 'link.py'
+        link = self.release / 'jellyport' / 'link.py'
         link.symlink_to(self.compose)
         with self.assertRaisesRegex(ValueError, 'link or special file'):
             self.update()
@@ -197,17 +197,17 @@ class NasUpdateTests(unittest.TestCase):
     def test_archive_requires_external_checksum_and_extracts_verified_package(self):
         archive = self.root / 'release.tar.gz'
         with tarfile.open(archive, 'w:gz') as bundle:
-            bundle.add(self.release, arcname='PlexPort-release')
+            bundle.add(self.release, arcname='JellyPort-release')
         with self.assertRaisesRegex(ValueError, 'published --sha256'):
             self.update(archive)
         with self.assertRaisesRegex(ValueError, 'archive checksum mismatch'):
             self.update(archive, '0' * 64)
         self.update(archive, update_nas.digest(archive))
-        self.assertEqual((self.app / 'plexport' / 'server.py').read_bytes(), b'new runtime')
+        self.assertEqual((self.app / 'jellyport' / 'server.py').read_bytes(), b'new runtime')
 
     def test_archive_traversal_absolute_paths_and_links_are_rejected(self):
         for name, kind in (('../escape.py', tarfile.REGTYPE), ('/escape.py', tarfile.REGTYPE),
-                           ('plexport/link.py', tarfile.SYMTYPE), ('plexport/hard.py', tarfile.LNKTYPE)):
+                           ('jellyport/link.py', tarfile.SYMTYPE), ('jellyport/hard.py', tarfile.LNKTYPE)):
             with self.subTest(name=name):
                 archive = self.root / 'unsafe.tar.gz'
                 with tarfile.open(archive, 'w:gz') as bundle:
@@ -219,7 +219,7 @@ class NasUpdateTests(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     self.update(archive, update_nas.digest(archive))
         self.assertFalse((self.root / 'escape.py').exists())
-        self.assertEqual((self.app / 'plexport' / 'server.py').read_bytes(), b'old runtime')
+        self.assertEqual((self.app / 'jellyport' / 'server.py').read_bytes(), b'old runtime')
 
     def test_rollback_refuses_backup_for_another_installation(self):
         backup = self.update()

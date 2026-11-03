@@ -22,5 +22,5 @@
   }
   const api = { isActive, hasImports, matchesFilter, counts };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
-  else root.PlexPortJobs = api;
+  else root.JellyPortJobs = api;
 })(typeof window === 'undefined' ? globalThis : window);

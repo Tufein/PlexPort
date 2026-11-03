@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { quality, select, preferences, readPreferences, readFilters, writeFilters, group, matches } = require('../plexport/static/discovery.js');
+const { quality, select, preferences, readPreferences, readFilters, writeFilters, group, matches } = require('../jellyport/static/discovery.js');
 const GB = 1024 ** 3;
 const versions = [
   { title: 'Example.2160p.mkv', size: 12 * GB, seeders: 5, source: 'A' },

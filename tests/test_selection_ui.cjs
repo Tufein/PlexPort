@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { selectionPayload, fileDescription } = require('../plexport/static/selection.js');
+const { selectionPayload, fileDescription } = require('../jellyport/static/selection.js');
 const snapshot = { id:'task', metadata_token:'current-identity', files:[
   {index:8,name:'Show.S01E01.mkv',kind:'video',selectable:true,season:1,episodes:[1]},
   {index:2,name:'Show.S01E01.nl.srt',kind:'subtitle',selectable:true},

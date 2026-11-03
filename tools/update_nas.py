@@ -1,4 +1,4 @@
-"""Replace only PlexPort's runtime after its service has been stopped.
+"""Replace only JellyPort's runtime after its service has been stopped.
 
 Use a published release checksum. This helper never controls services, changes
 Compose/settings, restores the database, or touches torrents and media.
@@ -82,7 +82,7 @@ def verify_manifest(root):
         if not path.is_file() or digest(path) != match[1].lower():
             raise ValueError(f'Release checksum mismatch: {name}')
         records[name] = match[1].lower()
-    runtime_files = {str(path.relative_to(root)) for path in (root / 'plexport').rglob('*') if path.is_file()}
+    runtime_files = {str(path.relative_to(root)) for path in (root / 'jellyport').rglob('*') if path.is_file()}
     if not runtime_files or not runtime_files.issubset(records):
         raise ValueError('SHA256SUMS must cover every runtime file')
 
@@ -115,12 +115,12 @@ def extract_release(archive, destination):
 
 
 def release_root(source):
-    if (source / 'plexport').is_dir():
+    if (source / 'jellyport').is_dir():
         return source
     children = list(source.iterdir())
-    if len(children) == 1 and children[0].is_dir() and (children[0] / 'plexport').is_dir():
+    if len(children) == 1 and children[0].is_dir() and (children[0] / 'jellyport').is_dir():
         return children[0]
-    raise ValueError('Release must contain a plexport directory')
+    raise ValueError('Release must contain a jellyport directory')
 
 
 def set_metadata(destination, reference):
@@ -156,27 +156,27 @@ def prepare_runtime(source, installed, stage):
 
 def replace_runtime(app, staged, work):
     previous = work / 'previous'
-    os.replace(app / 'plexport', previous)
+    os.replace(app / 'jellyport', previous)
     try:
-        os.replace(staged, app / 'plexport')
+        os.replace(staged, app / 'jellyport')
     except BaseException:
-        os.replace(previous, app / 'plexport')
+        os.replace(previous, app / 'jellyport')
         raise
 
 
 def backup_installation(app, data, backup):
-    database = data / 'plexport.sqlite'
+    database = data / 'jellyport.sqlite'
     if not database.is_file():
-        raise ValueError('Existing plexport.sqlite is required; confirm the data directory')
+        raise ValueError('Existing jellyport.sqlite is required; confirm the data directory')
     backup.mkdir(mode=0o700)
     try:
         copy_preserving(app, backup / 'code')
         with sqlite3.connect(database.as_uri() + '?mode=ro', uri=True) as source:
-            with sqlite3.connect(backup / 'plexport.sqlite') as target:
+            with sqlite3.connect(backup / 'jellyport.sqlite') as target:
                 source.backup(target)
                 if target.execute('PRAGMA integrity_check').fetchone()[0] != 'ok':
                     raise ValueError('SQLite backup failed its integrity check')
-        (backup / 'plexport.sqlite').chmod(0o600)
+        (backup / 'jellyport.sqlite').chmod(0o600)
         (backup / 'update.json').write_text(json.dumps({'app_dir': str(app), 'data_dir': str(data)}, indent=2))
         (backup / 'update.json').chmod(0o600)
     except BaseException:
@@ -188,15 +188,15 @@ def validate_installation(app, data, backups):
     app, data, backups = map(checked_path, (app, data, backups))
     check_tree(app)
     check_tree(data)
-    if not all((app / 'plexport' / name).is_file() for name in REQUIRED):
-        raise ValueError('Application directory does not contain an installed PlexPort runtime')
+    if not all((app / 'jellyport' / name).is_file() for name in REQUIRED):
+        raise ValueError('Application directory does not contain an installed JellyPort runtime')
     if app == data or app.is_relative_to(data):
         raise ValueError('Application code must not be the data directory or lie inside it')
     if backups == app or backups.is_relative_to(app) or backups == data or backups.is_relative_to(data):
         raise ValueError('Backup directory must be outside application code and data')
     if app.is_relative_to(backups) or data.is_relative_to(backups):
         raise ValueError('Backup directory must not contain the application or data')
-    if data.is_relative_to(app / 'plexport'):
+    if data.is_relative_to(app / 'jellyport'):
         raise ValueError('Application data must not be inside the replaceable runtime')
     return app, data, backups
 
@@ -210,7 +210,7 @@ def update(app_dir, data_dir, backup_dir, source_path, expected_sha256=None):
         check_tree(source)
     elif not source.is_file():
         raise ValueError('Release source does not exist')
-    with tempfile.TemporaryDirectory(prefix='plexport-release-') as extracted:
+    with tempfile.TemporaryDirectory(prefix='jellyport-release-') as extracted:
         if source.is_file():
             if not expected_sha256 or not re.fullmatch(r'[0-9a-fA-F]{64}', expected_sha256):
                 raise ValueError('An archive requires its published --sha256 checksum')
@@ -222,16 +222,16 @@ def update(app_dir, data_dir, backup_dir, source_path, expected_sha256=None):
             root = release_root(source)
         check_tree(root)
         verify_manifest(root)
-        if not all((root / 'plexport' / name).is_file() for name in RELEASE_REQUIRED):
+        if not all((root / 'jellyport' / name).is_file() for name in RELEASE_REQUIRED):
             raise ValueError('Release runtime is incomplete')
         backups.mkdir(mode=0o700, parents=True, exist_ok=True)
         if backups.stat().st_mode & 0o077:
             raise ValueError('Backup directory must be private (chmod 700)')
-        backup = backups / ('plexport-update-' + uuid.uuid4().hex)
+        backup = backups / ('jellyport-update-' + uuid.uuid4().hex)
         backup_installation(app, data, backup)
-        with tempfile.TemporaryDirectory(prefix='.plexport-update-', dir=app) as temporary:
+        with tempfile.TemporaryDirectory(prefix='.jellyport-update-', dir=app) as temporary:
             work = Path(temporary)
-            prepare_runtime(root / 'plexport', app / 'plexport', work / 'next')
+            prepare_runtime(root / 'jellyport', app / 'jellyport', work / 'next')
             replace_runtime(app, work / 'next', work)
         return backup
 
@@ -243,10 +243,10 @@ def rollback(app_dir, backup_path):
     metadata = json.loads((backup / 'update.json').read_text())
     if metadata.get('app_dir') != str(app):
         raise ValueError('Backup belongs to a different application directory')
-    old = backup / 'code' / 'plexport'
+    old = backup / 'code' / 'jellyport'
     if not all((old / name).is_file() for name in REQUIRED):
         raise ValueError('Backup runtime is incomplete')
-    with tempfile.TemporaryDirectory(prefix='.plexport-rollback-', dir=app) as temporary:
+    with tempfile.TemporaryDirectory(prefix='.jellyport-rollback-', dir=app) as temporary:
         work = Path(temporary)
         copy_preserving(old, work / 'next')
         replace_runtime(app, work / 'next', work)
@@ -260,10 +260,10 @@ def main():
     parser.add_argument('--source', type=Path)
     parser.add_argument('--sha256')
     parser.add_argument('--rollback', type=Path, help='Restore runtime code only; never restore an old database')
-    parser.add_argument('--service-stopped', action='store_true', help='Confirm that only PlexPort has been stopped')
+    parser.add_argument('--service-stopped', action='store_true', help='Confirm that only JellyPort has been stopped')
     args = parser.parse_args()
     if not args.service_stopped:
-        parser.error('Stop the discovered PlexPort service and pass --service-stopped')
+        parser.error('Stop the discovered JellyPort service and pass --service-stopped')
     try:
         if args.rollback:
             if args.source or args.data_dir or args.backup_dir or args.sha256:
@@ -275,7 +275,7 @@ def main():
                 parser.error('An update requires --data-dir, --backup-dir and --source')
             backup = update(args.app_dir, args.data_dir, args.backup_dir, args.source, args.sha256)
             print(f'Runtime updated. Private backup: {backup}')
-        print('Start only PlexPort, then verify the version, saved tasks and connections.')
+        print('Start only JellyPort, then verify the version, saved tasks and connections.')
     except (OSError, ValueError, sqlite3.Error, tarfile.TarError) as error:
         parser.exit(1, f'Update failed: {error}\n')
 

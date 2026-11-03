@@ -30,5 +30,5 @@
   }
   const api = { selectionPayload, fileDescription };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
-  else root.PlexPortSelection = api;
+  else root.JellyPortSelection = api;
 })(typeof window === 'undefined' ? globalThis : window);

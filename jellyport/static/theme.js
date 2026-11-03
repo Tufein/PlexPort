@@ -1,6 +1,6 @@
 (function () {
   'use strict';
-  const key = 'plexport-theme';
+  const key = 'jellyport-theme';
   const options = ['system', 'light', 'dark'];
   const system = window.matchMedia('(prefers-color-scheme: dark)');
   let preference = 'system';
@@ -16,7 +16,7 @@
     const control = document.getElementById('theme-choice');
     if (control) control.value = preference;
   }
-  window.PlexPortTheme = {
+  window.JellyPortTheme = {
     get preference() { return preference; },
     set(value) {
       if (!options.includes(value)) return;

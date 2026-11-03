@@ -3,7 +3,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
-const discovery = require('../plexport/static/discovery.js');
+const discovery = require('../jellyport/static/discovery.js');
 const {select, group, recommend} = discovery;
 const GB = 1024 ** 3;
 
@@ -83,13 +83,13 @@ test('ranking never mutates or copies rows and rejects unusable selection indice
 });
 
 function cardFixture(results,filters={}) {
-  const source = fs.readFileSync(path.join(__dirname,'../plexport/static/app.js'),'utf8');
+  const source = fs.readFileSync(path.join(__dirname,'../jellyport/static/app.js'),'utf8');
   const start = source.indexOf('function releaseMeta(release){');
   const end = source.indexOf('\nfunction applyPreferences(',start);
   assert.ok(start>=0 && end>start);
   const output={innerHTML:''}, confirmations=[];
   let clickHandler;
-  const context = {PlexPortDiscovery:discovery,results,searchKind:'movie',
+  const context = {JellyPortDiscovery:discovery,results,searchKind:'movie',
     $:()=>output,filterValues:()=>({quality:'all',size:'0',seeders:'0',source:'all',sort:'seeders',...filters}),
     esc:value=>String(value??'').replace(/[&<>"']/g,char=>`&#${char.charCodeAt(0)};`),
     bytes:value=>`${value/GB} GB`,artwork:()=>'',icon:()=>'',finishRender(){},empty:()=>'<p>Empty</p>',

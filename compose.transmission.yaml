@@ -1,15 +1,15 @@
-# Alternatief: PlexPort met een meegeleverde Transmission-engine.
+# Alternatief: JellyPort met een meegeleverde Transmission-engine.
 services:
-  plexport:
+  jellyport:
     build: .
     restart: unless-stopped
     ports:
       - "8765:8765"
     environment:
-      PLEXPORT_PASSWORD: ${PLEXPORT_PASSWORD:?Vul PLEXPORT_PASSWORD in .env in}
+      JELLYPORT_PASSWORD: ${JELLYPORT_PASSWORD:?Vul JELLYPORT_PASSWORD in .env in}
       DOWNLOADER_TYPE: transmission
       TRANSMISSION_URL: http://transmission:9091/transmission/rpc
-      TRANSMISSION_USER: ${TRANSMISSION_USER:-plexport}
+      TRANSMISSION_USER: ${TRANSMISSION_USER:-jellyport}
       TRANSMISSION_PASSWORD: ${TRANSMISSION_PASSWORD:?Vul TRANSMISSION_PASSWORD in .env in}
       DOWNLOADER_ROOT: /downloads
     volumes:
@@ -25,7 +25,7 @@ services:
       PUID: ${PUID:-1000}
       PGID: ${PGID:-1000}
       TZ: Europe/Brussels
-      USER: ${TRANSMISSION_USER:-plexport}
+      USER: ${TRANSMISSION_USER:-jellyport}
       PASS: ${TRANSMISSION_PASSWORD:?Vul TRANSMISSION_PASSWORD in .env in}
       HOST_WHITELIST: transmission
     volumes:

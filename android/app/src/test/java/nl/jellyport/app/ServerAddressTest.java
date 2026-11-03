@@ -1,4 +1,4 @@
-package nl.plexport.app;
+package nl.jellyport.app;
 
 import org.junit.Test;
 import static org.junit.Assert.*;

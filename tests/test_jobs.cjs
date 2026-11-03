@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { isActive, hasImports, matchesFilter, counts } = require('../plexport/static/jobs.js');
+const { isActive, hasImports, matchesFilter, counts } = require('../jellyport/static/jobs.js');
 
 test('imported tasks stay visible after a failed scan or stopping the downloader', () => {
   for (const state of ['scan_pending', 'error', 'stopped', 'done']) {

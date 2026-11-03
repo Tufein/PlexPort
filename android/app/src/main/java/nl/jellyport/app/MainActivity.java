@@ -1,4 +1,4 @@
-package nl.plexport.app;
+package nl.jellyport.app;
 
 import android.app.Activity;
 import android.app.AlertDialog;
@@ -74,12 +74,12 @@ public final class MainActivity extends Activity {
 
     private void showConnectionTimeout() {
         if (webView != null) webView.stopLoading();
-        showError("Je NAS antwoordt niet", "Controleer of je telefoon op hetzelfde netwerk zit en of PlexPort op je NAS draait.");
+        showError("Je NAS antwoordt niet", "Controleer of je telefoon op hetzelfde netwerk zit en of JellyPort op je NAS draait.");
     }
 
     @Override public void onCreate(Bundle savedState) {
         super.onCreate(savedState);
-        preferences = getSharedPreferences("plexport", MODE_PRIVATE);
+        preferences = getSharedPreferences("jellyport", MODE_PRIVATE);
         try {
             server = ServerAddress.normalize(preferences.getString("server", DEFAULT_SERVER));
         } catch (IllegalArgumentException e) {
@@ -145,7 +145,7 @@ public final class MainActivity extends Activity {
         toolbar.setGravity(Gravity.CENTER_VERTICAL);
         toolbar.setPadding(dp(16), dp(4), dp(8), dp(4));
         TextView title = new TextView(this);
-        title.setText("❯  PlexPort");
+        title.setText("❯  JellyPort");
         title.setTextSize(20);
         title.setTextColor(color(R.color.text));
         title.setTypeface(null, android.graphics.Typeface.BOLD);
@@ -155,7 +155,7 @@ public final class MainActivity extends Activity {
         menu.setText("Menu");
         menu.setTextColor(color(R.color.accent));
         menu.setBackground(rounded(color(R.color.card), color(R.color.line), 10));
-        menu.setContentDescription("PlexPort-menu: NAS-adres, opnieuw laden en afmelden");
+        menu.setContentDescription("JellyPort-menu: NAS-adres, opnieuw laden en afmelden");
         menu.setOnClickListener(v -> showMenu(menu));
         toolbar.addView(menu, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, dp(48)));
         root.addView(toolbar);
@@ -242,7 +242,7 @@ public final class MainActivity extends Activity {
             }
         });
         webView.setDownloadListener((url, userAgent, disposition, mime, length) ->
-                Toast.makeText(this, "Gebruik de downloadknop in PlexPort. Je NAS en qBittorrent voeren de download uit.", Toast.LENGTH_LONG).show());
+                Toast.makeText(this, "Gebruik de downloadknop in JellyPort. Je NAS en qBittorrent voeren de download uit.", Toast.LENGTH_LONG).show());
         content.addView(webView, 0, new FrameLayout.LayoutParams(-1, -1));
     }
 
@@ -254,7 +254,7 @@ public final class MainActivity extends Activity {
             clearSession();
             destroyWebView();
             createWebView();
-            showError("Je bent afgemeld", "Kies ‘Opnieuw proberen’ om weer bij PlexPort aan te melden.");
+            showError("Je bent afgemeld", "Kies ‘Opnieuw proberen’ om weer bij JellyPort aan te melden.");
             return true;
         });
         menu.show();
@@ -270,11 +270,11 @@ public final class MainActivity extends Activity {
         fields.setOrientation(LinearLayout.VERTICAL);
         fields.setPadding(dp(24), dp(12), dp(24), 0);
         TextView help = new TextView(this);
-        help.setText("De app gebruikt dezelfde bronnen, downloads en Plex-instellingen als de website op je NAS. Verbind met je thuisnetwerk. Gebruik http:// of https://.");
+        help.setText("De app gebruikt dezelfde bronnen, downloads en Jellyfin-instellingen als de website op je NAS. Verbind met je thuisnetwerk. Gebruik http:// of https://.");
         fields.addView(help);
         fields.addView(address);
         AlertDialog dialog = new AlertDialog.Builder(this)
-                .setTitle("Je PlexPort op de NAS")
+                .setTitle("Je JellyPort op de NAS")
                 .setView(fields)
                 .setNegativeButton(firstLaunch ? "Sluiten" : "Annuleren", (d, w) -> { if (firstLaunch) finish(); })
                 .setPositiveButton("Verbinden", null).create();
@@ -324,7 +324,7 @@ public final class MainActivity extends Activity {
     private final class ServerClient extends WebViewClient {
         @Override public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
             if (ServerAddress.sameOrigin(server, request.getUrl().toString())) return false;
-            Toast.makeText(MainActivity.this, "Deze app opent alleen jouw ingestelde PlexPort-server.", Toast.LENGTH_SHORT).show();
+            Toast.makeText(MainActivity.this, "Deze app opent alleen jouw ingestelde JellyPort-server.", Toast.LENGTH_SHORT).show();
             return true;
         }
         @Override public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
@@ -346,13 +346,13 @@ public final class MainActivity extends Activity {
             if (!pageFailed) { errorPanel.setVisibility(View.GONE); view.setVisibility(View.VISIBLE); }
         }
         @Override public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
-            if (request.isForMainFrame()) showError("PlexPort is niet bereikbaar",
-                    "Controleer je wifi of VPN, het NAS-adres en of PlexPort op je NAS draait. Daarna kun je opnieuw proberen.");
+            if (request.isForMainFrame()) showError("JellyPort is niet bereikbaar",
+                    "Controleer je wifi of VPN, het NAS-adres en of JellyPort op je NAS draait. Daarna kun je opnieuw proberen.");
         }
         @Override public void onReceivedHttpError(WebView view, WebResourceRequest request, WebResourceResponse response) {
             if (!request.isForMainFrame()) return;
-            if (response.getStatusCode() == 401) showError("Aanmelding nodig", "Probeer opnieuw en gebruik je PlexPort-gebruikersnaam en wachtwoord.");
-            else if (response.getStatusCode() >= 400) showError("PlexPort geeft een fout", "Je NAS antwoordt met foutcode " + response.getStatusCode() + ". Controleer de PlexPort-app op TrueNAS.");
+            if (response.getStatusCode() == 401) showError("Aanmelding nodig", "Probeer opnieuw en gebruik je JellyPort-gebruikersnaam en wachtwoord.");
+            else if (response.getStatusCode() >= 400) showError("JellyPort geeft een fout", "Je NAS antwoordt met foutcode " + response.getStatusCode() + ". Controleer de JellyPort-app op TrueNAS.");
         }
         @Override public void onReceivedSslError(WebView view, SslErrorHandler sslHandler, SslError error) {
             sslHandler.cancel();
@@ -363,7 +363,7 @@ public final class MainActivity extends Activity {
                     || sessionPassword == null || ++webAuthAttempts > 1) {
                 auth.cancel();
                 clearSession();
-                showError("Aanmelding verlopen", "Meld je opnieuw aan om PlexPort te gebruiken.");
+                showError("Aanmelding verlopen", "Meld je opnieuw aan om JellyPort te gebruiken.");
                 return;
             }
             auth.proceed(sessionUser, sessionPassword);
@@ -377,7 +377,7 @@ public final class MainActivity extends Activity {
         fields.setPadding(dp(24), dp(24), dp(24), dp(8));
         fields.setImportantForAutofill(View.IMPORTANT_FOR_AUTOFILL_NO_EXCLUDE_DESCENDANTS);
         TextView brand = new TextView(this);
-        brand.setText("❯  PlexPort");
+        brand.setText("❯  JellyPort");
         brand.setTextColor(color(R.color.accent));
         brand.setTextSize(18);
         brand.setTypeface(null, android.graphics.Typeface.BOLD);
@@ -411,7 +411,7 @@ public final class MainActivity extends Activity {
         user.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD);
         styleInput(user);
         fields.addView(user);
-        loginLabel(fields, "PlexPort-wachtwoord");
+        loginLabel(fields, "JellyPort-wachtwoord");
         EditText password = new EditText(MainActivity.this);
         password.setSingleLine(true);
         password.setHint("Vul je wachtwoord in");
@@ -436,7 +436,7 @@ public final class MainActivity extends Activity {
         feedback.setVisibility(View.GONE);
         fields.addView(feedback);
         TextView privacy = new TextView(this);
-        privacy.setText("Gebruik je PlexPort-wachtwoord. Je wachtwoord wordt niet opgeslagen op je telefoon.");
+        privacy.setText("Gebruik je JellyPort-wachtwoord. Je wachtwoord wordt niet opgeslagen op je telefoon.");
         privacy.setTextSize(12);
         privacy.setTextColor(color(R.color.muted));
         privacy.setPadding(0, dp(10), 0, dp(12));
@@ -463,7 +463,7 @@ public final class MainActivity extends Activity {
             signIn.setMinHeight(dp(48));
             signIn.setOnClickListener(v -> {
             if (user.getText().toString().trim().isEmpty()) { user.setError("Vul je gebruikersnaam in."); return; }
-            if (password.getText().length() == 0) { password.setError("Vul je PlexPort-wachtwoord in."); return; }
+            if (password.getText().length() == 0) { password.setError("Vul je JellyPort-wachtwoord in."); return; }
             String chosenUser = user.getText().toString().trim();
             String chosenPassword = password.getText().toString();
             String chosenServer = server;
@@ -508,13 +508,13 @@ public final class MainActivity extends Activity {
             connection.setRequestProperty("Authorization", "Basic " + basic);
             int status = connection.getResponseCode();
             if (status == 200) return null;
-            if (status == 401 || status == 403) return "De gebruikersnaam of het PlexPort-wachtwoord klopt niet.";
-            if (status >= 300 && status < 400) return "Dit adres stuurt door. Vul het directe PlexPort-adres in.";
-            return "PlexPort geeft foutcode " + status + ". Controleer de app op je NAS.";
+            if (status == 401 || status == 403) return "De gebruikersnaam of het JellyPort-wachtwoord klopt niet.";
+            if (status >= 300 && status < 400) return "Dit adres stuurt door. Vul het directe JellyPort-adres in.";
+            return "JellyPort geeft foutcode " + status + ". Controleer de app op je NAS.";
         } catch (javax.net.ssl.SSLException e) {
             return "Het HTTPS-certificaat is ongeldig. Herstel het certificaat op je NAS.";
         } catch (Exception e) {
-            return "PlexPort is niet bereikbaar. Controleer wifi of VPN en het NAS-adres.";
+            return "JellyPort is niet bereikbaar. Controleer wifi of VPN en het NAS-adres.";
         } finally {
             if (connection != null) connection.disconnect();
         }

@@ -4,10 +4,10 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
-const selection = require('../plexport/static/selection.js');
-const jobs = require('../plexport/static/jobs.js');
+const selection = require('../jellyport/static/selection.js');
+const jobs = require('../jellyport/static/jobs.js');
 
-const source = fs.readFileSync(path.join(__dirname, '../plexport/static/app.js'), 'utf8');
+const source = fs.readFileSync(path.join(__dirname, '../jellyport/static/app.js'), 'utf8');
 const start = source.indexOf('function closeFiles(){');
 const end = source.indexOf("document.addEventListener('click',event=>{", start);
 assert.ok(start >= 0 && end > start, 'file modal handlers must be present');
@@ -58,7 +58,7 @@ function fixture() {
   const context = {
     $:node, status:{jobs:[{id:'A',title:'Series A'}, {id:'B',title:'Series B'}]},
     api:(route, body) => new Promise((resolve, reject) => requests.push({route, body, resolve, reject})),
-    PlexPortSelection:selection, PlexPortJobs:jobs,
+    JellyPortSelection:selection, JellyPortJobs:jobs,
     bytes:String, esc:value => String(value ?? '').replace(/[&<>"']/g, char => `&#${char.charCodeAt(0)};`),
     toast:(message, error) => toasts.push({message, error}), refresh:async() => {},
     setTimeout:callback => { timers.set(++timerId, callback); return timerId; },

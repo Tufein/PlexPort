@@ -1,6 +1,6 @@
-"""Conservative title warnings within the current PlexPort task history.
+"""Conservative title warnings within the current JellyPort task history.
 
-These matches are advisory: they do not inspect Plex or the filesystem, establish
+These matches are advisory: they do not inspect Jellyfin or the filesystem, establish
 torrent identity, or decide whether a download may be added. Callers must retain
 the separate fingerprint check and repeat this check while holding their lock.
 """
@@ -65,7 +65,7 @@ def title_conflicts(jobs, candidate):
     """Return public advisory matches for a confirmed library-title candidate.
 
     Input jobs and candidate use ``title``, ``kind`` (movie/tv), ``year``,
-    ``season`` and ``episode`` as stored by PlexPort. Each returned match contains
+    ``season`` and ``episode`` as stored by JellyPort. Each returned match contains
     only id/title/kind/year/season/episode/state, an ``imported`` boolean based on
     recorded files, ``certainty`` (definite/possible), and a stable ``reason``:
     same_title, missing_year, ambiguous_title, season_pack, or missing_episode.

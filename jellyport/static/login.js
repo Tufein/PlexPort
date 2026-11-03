@@ -5,8 +5,8 @@ const toggle = document.getElementById('password-toggle');
 const submit = document.getElementById('login-submit');
 const error = document.getElementById('login-error');
 const theme = document.getElementById('theme-choice');
-theme.value = window.PlexPortTheme.preference;
-theme.addEventListener('change', () => window.PlexPortTheme.set(theme.value));
+theme.value = window.JellyPortTheme.preference;
+theme.addEventListener('change', () => window.JellyPortTheme.set(theme.value));
 toggle.addEventListener('click', () => {
   const show = password.type === 'password';
   password.type = show ? 'text' : 'password';
@@ -20,7 +20,7 @@ form.addEventListener('submit', async event => {
   submit.querySelector('span').textContent = 'Even aanmelden…';
   try {
     const response = await fetch('/auth/login', {
-      method: 'POST', headers: {'Content-Type': 'application/json', 'X-PlexPort': '1'},
+      method: 'POST', headers: {'Content-Type': 'application/json', 'X-JellyPort': '1'},
       body: JSON.stringify({username: form.elements.username.value.trim(), password: password.value})
     });
     const body = await response.json();

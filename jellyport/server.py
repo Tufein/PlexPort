@@ -17,8 +17,8 @@ import urllib.parse
 import webbrowser
 
 from . import __version__
-from .core import APIConflict, Store, Worker, defaults, friendly_error, public_job, public_settings, storage_report
-from .integrations import client, plex_scan, plex_sections, search_source
+from .core import APIConflict, Store, env, Worker, defaults, friendly_error, public_job, public_settings, storage_report
+from .integrations import client, jellyfin_scan, jellyfin_sections, search_source
 from .posters import PosterCache
 from .search import prepare_query, filter_results
 from .sources import supports
@@ -33,7 +33,7 @@ def create_server(host, port, store, password=''):
     sessions = {}
     failures = {}
     auth_lock = threading.Lock()
-    cookie_name = 'plexport_session'
+    cookie_name = 'jellyport_session'
 
     def new_session():
         now = time.monotonic()
@@ -51,7 +51,7 @@ def create_server(host, port, store, password=''):
         def log_message(self, fmt, *args):
             # Avoid logging search queries, tokens, or torrent links.
             if len(args) > 1 and str(args[1]) != '200':
-                print('PlexPort HTTP', args[1])
+                print('JellyPort HTTP', args[1])
 
         def send(self, value, status=200, content_type='application/json; charset=utf-8', headers=None, cache_control='no-store'):
             body = json.dumps(value, ensure_ascii=False).encode() if isinstance(value, (dict, list)) else value
@@ -93,7 +93,7 @@ def create_server(host, port, store, password=''):
                     self.authentication = 'session'
                     return True
             expected = 'Basic ' + base64.b64encode(('admin:' + password).encode()).decode()
-            if jar.get('plexport_signed_out') != '1' and hmac.compare_digest(self.headers.get('Authorization', ''), expected):
+            if jar.get('jellyport_signed_out') != '1' and hmac.compare_digest(self.headers.get('Authorization', ''), expected):
                 self.authentication = 'basic'
                 return True
             return False
@@ -118,11 +118,11 @@ def create_server(host, port, store, password=''):
             if not public and not self.authenticated():
                 headers = []
                 if self.native_client():
-                    headers.append(('WWW-Authenticate', 'Basic realm="PlexPort", charset="UTF-8"'))
-                self.send({'error': 'Meld je opnieuw aan bij PlexPort.'}, 401, headers=headers)
+                    headers.append(('WWW-Authenticate', 'Basic realm="JellyPort", charset="UTF-8"'))
+                self.send({'error': 'Meld je opnieuw aan bij JellyPort.'}, 401, headers=headers)
                 return False
             if self.path.startswith(('/api/', '/auth/')):
-                if self.headers.get('X-PlexPort') != '1':
+                if '1' not in (self.headers.get('X-JellyPort'), self.headers.get('X-PlexPort')):
                     self.send({'error': 'Ongeldig app-verzoek.'}, 403)
                     return False
                 origin = self.headers.get('Origin')
@@ -145,7 +145,7 @@ def create_server(host, port, store, password=''):
                     if self.allowed(public=True):
                         self.send((STATIC / 'login.html').read_bytes(), content_type='text/html; charset=utf-8')
                     return
-                if parsed.path == '/' and self.cookies().get('plexport_signed_out') == '1' and not self.authenticated() and not self.native_client():
+                if parsed.path == '/' and self.cookies().get('jellyport_signed_out') == '1' and not self.authenticated() and not self.native_client():
                     if self.allowed(public=True):
                         self.send((STATIC / 'login.html').read_bytes(), content_type='text/html; charset=utf-8')
                     return
@@ -210,7 +210,7 @@ def create_server(host, port, store, password=''):
                     self.send({'results': results[:250], 'errors': errors, 'searched_sources': len(sources),
                                'search': {'wildcard': prepared['wildcard'], 'notice': notice}})
                 else:
-                    names = {'/': 'index.html', '/app.js': 'app.js', '/jobs.js': 'jobs.js', '/artwork.js': 'artwork.js', '/discovery.js': 'discovery.js', '/selection.js': 'selection.js', '/theme.js': 'theme.js', '/style.css': 'style.css', '/favicon.svg': 'favicon.svg', '/plexport.apk': 'plexport.apk'}
+                    names = {'/': 'index.html', '/app.js': 'app.js', '/jobs.js': 'jobs.js', '/artwork.js': 'artwork.js', '/discovery.js': 'discovery.js', '/selection.js': 'selection.js', '/theme.js': 'theme.js', '/style.css': 'style.css', '/favicon.svg': 'favicon.svg', '/jellyport.apk': 'jellyport.apk'}
                     filename = names.get(parsed.path)
                     if not filename:
                         self.send({'error': 'Niet gevonden.'}, 404)
@@ -258,11 +258,11 @@ def create_server(host, port, store, password=''):
                     if not valid:
                         self.send({'error': 'De gebruikersnaam of het wachtwoord klopt niet. Probeer opnieuw.'}, 401)
                         return
-                    self.send({'ok': True}, headers=[('Set-Cookie', self.session_cookie(new_session())), ('Set-Cookie', 'plexport_signed_out=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0')])
+                    self.send({'ok': True}, headers=[('Set-Cookie', self.session_cookie(new_session())), ('Set-Cookie', 'jellyport_signed_out=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0')])
                 elif self.path == '/auth/logout':
                     with auth_lock:
                         sessions.pop(self.cookies().get(cookie_name, ''), None)
-                    self.send({'ok': True}, headers=[('Set-Cookie', self.session_cookie('', clear=True)), ('Set-Cookie', 'plexport_signed_out=1; Path=/; HttpOnly; SameSite=Strict')])
+                    self.send({'ok': True}, headers=[('Set-Cookie', self.session_cookie('', clear=True)), ('Set-Cookie', 'jellyport_signed_out=1; Path=/; HttpOnly; SameSite=Strict')])
                 elif self.path == '/api/settings':
                     with worker.lock:
                         previous = store.settings()
@@ -273,8 +273,8 @@ def create_server(host, port, store, password=''):
                         if (previous['library'] != current['library']
                                 or previous['downloader']['local_root'] != current['downloader']['local_root']):
                             checks.pop('storage', None)
-                        if previous['plex'] != current['plex']:
-                            checks.pop('plex', None)
+                        if previous['jellyfin'] != current['jellyfin']:
+                            checks.pop('jellyfin', None)
                     self.send(result)
                 elif self.path == '/api/jobs':
                     self.send(worker.enqueue(data), 201)
@@ -295,9 +295,9 @@ def create_server(host, port, store, password=''):
                         if target == 'downloader':
                             message = client(config['downloader']).test()
                             extra = {}
-                        elif target == 'plex':
-                            sections = plex_sections(config['plex'])
-                            message = 'Plex bereikbaar · ' + str(len(sections)) + ' bibliotheken'
+                        elif target == 'jellyfin':
+                            sections = jellyfin_sections(config['jellyfin'])
+                            message = 'Jellyfin bereikbaar · ' + str(len(sections)) + ' bibliotheken'
                             extra = {'sections': sections}
                         elif target == 'storage':
                             report = storage_report(config)
@@ -307,7 +307,7 @@ def create_server(host, port, store, password=''):
                                 self.send({'message': failed['message'], **report}, 400)
                                 return
                             extra = {'folders': report['folders'], 'free': min(f['free'] for f in report['folders'])}
-                            message = 'Download- en Plex-mappen zijn bereikbaar'
+                            message = 'Download- en Jellyfin-mappen zijn bereikbaar'
                         else:
                             raise ValueError('Onbekende verbinding.')
                         checks[target] = {'ok': True, 'message': message}
@@ -317,8 +317,8 @@ def create_server(host, port, store, password=''):
                         checks[target] = {'ok': False, 'message': message}
                         self.send({'ok': False, 'message': message}, 400)
                 elif self.path == '/api/scan':
-                    plex_scan(store.settings()['plex'], data.get('kind', 'movie'))
-                    self.send({'message': 'Plex-bibliotheekscan aangevraagd.'})
+                    jellyfin_scan(store.settings()['jellyfin'], data.get('kind', 'movie'))
+                    self.send({'message': 'Jellyfin-bibliotheekscan aangevraagd.'})
                 else:
                     self.send({'error': 'Niet gevonden.'}, 404)
             except APIConflict as e:
@@ -332,21 +332,21 @@ def create_server(host, port, store, password=''):
 
 
 def main():
-    parser = argparse.ArgumentParser(description='PlexPort')
-    parser.add_argument('--host', default=os.environ.get('PLEXPORT_HOST', '127.0.0.1'))
-    parser.add_argument('--port', type=int, default=int(os.environ.get('PLEXPORT_PORT', '8765')))
+    parser = argparse.ArgumentParser(description='JellyPort')
+    parser.add_argument('--host', default=env('HOST', '127.0.0.1'))
+    parser.add_argument('--port', type=int, default=int(env('PORT', '8765')))
     parser.add_argument('--open', action='store_true')
     args = parser.parse_args()
-    password = os.environ.get('PLEXPORT_PASSWORD', '')
+    password = env('PASSWORD')
     if args.host not in ('127.0.0.1', 'localhost', '::1') and not password:
-        parser.error('Stel PLEXPORT_PASSWORD in voor toegang vanaf andere apparaten.')
+        parser.error('Stel JELLYPORT_PASSWORD in voor toegang vanaf andere apparaten.')
     for path in [defaults()['downloader']['local_root'], *defaults()['library'].values()]:
         Path(path).mkdir(parents=True, exist_ok=True)
-    store = Store(os.environ.get('PLEXPORT_DATA', './data'))
+    store = Store(env('DATA', './data'))
     server, worker = create_server(args.host, args.port, store, password)
     thread = threading.Thread(target=worker.run, daemon=True)
     thread.start()
-    print(f'PlexPort is beschikbaar op http://{args.host}:{args.port}')
+    print(f'JellyPort is beschikbaar op http://{args.host}:{args.port}')
     if args.open:
         webbrowser.open(f'http://127.0.0.1:{args.port}')
     try:

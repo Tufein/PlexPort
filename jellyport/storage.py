@@ -11,7 +11,7 @@ import uuid
 _COPY_ERRORS = {errno.EXDEV, errno.ENOSYS, errno.EOPNOTSUPP, errno.ENOTSUP}
 _NOTE = ('Deze controle is een momentopname, geen garantie of ruimtereservering. '
          'Maprechten, bestandssystemen, quota en andere downloads kunnen veranderen. '
-         'De downloader moet dezelfde downloadmap gebruiken als PlexPort.')
+         'De downloader moet dezelfde downloadmap gebruiken als JellyPort.')
 
 
 def _problem(error):
@@ -100,14 +100,14 @@ def import_capability(config, kind, expected_bytes=0):
             if not path.is_absolute() or not path.is_dir():
                 raise ValueError('De ' + label + ' is niet bereikbaar. Controleer de mapkoppeling bij Instellingen.')
         result['shared_filesystem'] = downloads.stat().st_dev == library.stat().st_dev
-        marker = ('PlexPort import check ' + uuid.uuid4().hex).encode('ascii')
-        descriptor, name = tempfile.mkstemp(prefix='.plexport-import-', dir=downloads)
+        marker = ('JellyPort import check ' + uuid.uuid4().hex).encode('ascii')
+        descriptor, name = tempfile.mkstemp(prefix='.jellyport-import-', dir=downloads)
         source = Path(name)
         owned.append(source)
         with os.fdopen(descriptor, 'wb') as probe:
             probe.write(marker)
             probe.flush()
-        destination = library / ('.plexport-import-' + uuid.uuid4().hex)
+        destination = library / ('.jellyport-import-' + uuid.uuid4().hex)
         try:
             os.link(source, destination)
             owned.append(destination)

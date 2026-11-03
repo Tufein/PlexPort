@@ -8,10 +8,10 @@ __pycache__/
 *.pyc
 .DS_Store
 .venv/
-PlexPort-NAS.zip
-PlexPort-TrueNAS.zip
+JellyPort-NAS.zip
+JellyPort-TrueNAS.zip
 verification/
-PlexPort 2/
+JellyPort 2/
 android/build/
 android/app/build/
 android/verification/

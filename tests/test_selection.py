@@ -13,10 +13,10 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
-from plexport.core import APIConflict, Store, Worker, defaults, import_media, new_job
-from plexport.integrations import QBittorrent, Transmission
-from plexport.selection import describe_files, identities, metadata_token, validate_selection
-from plexport.server import create_server
+from jellyport.core import APIConflict, Store, Worker, defaults, import_media, new_job
+from jellyport.integrations import QBittorrent, Transmission
+from jellyport.selection import describe_files, identities, metadata_token, validate_selection
+from jellyport.server import create_server
 
 HASH = 'a' * 40
 MAGNET = 'magnet:?xt=urn:btih:' + HASH
@@ -127,7 +127,7 @@ class SelectionSetup(unittest.TestCase):
         self.job.update(state='downloading', torrent_id=HASH, add_started=True)
         self.store.save_job(self.job)
         self.client = DownloaderFixture(self.job)
-        self.patcher = patch('plexport.core.client', return_value=self.client)
+        self.patcher = patch('jellyport.core.client', return_value=self.client)
         self.get_client = self.patcher.start()
 
     def tearDown(self):
@@ -317,12 +317,12 @@ class SelectionWorkerTests(SelectionSetup):
 
     def test_initial_space_checks_use_unknown_selection_then_selected_remaining_bytes(self):
         item = {'kind': 'tv', 'title': 'Space', 'link': MAGNET + '&dn=space', 'selection_requested': True, 'expected_bytes': 1000}
-        with patch('plexport.core.require_storage') as require:
+        with patch('jellyport.core.require_storage') as require:
             result = self.worker.enqueue(item)
         self.assertEqual(result['torrent_expected_bytes'], 1000)
         self.assertEqual(result['expected_bytes'], 0)
         self.assertEqual(require.call_args.args[2], 0)
-        with patch('plexport.core.require_storage') as require:
+        with patch('jellyport.core.require_storage') as require:
             self.choose((0, 2))
         self.assertEqual(require.call_args.args[2], 9)
         job = self.store.job(self.job['id'])
@@ -331,7 +331,7 @@ class SelectionWorkerTests(SelectionSetup):
 
     def test_insufficient_selected_download_space_keeps_task_paused_and_unconfirmed(self):
         view = self.worker.files(self.job['id'])
-        with patch('plexport.core.require_storage', side_effect=ValueError('Te weinig vrije ruimte')):
+        with patch('jellyport.core.require_storage', side_effect=ValueError('Te weinig vrije ruimte')):
             with self.assertRaisesRegex(ValueError, 'Te weinig'):
                 self.worker.select(self.job['id'], [0, 2], view['metadata_token'])
         self.assertEqual(self.store.job(self.job['id'])['selection_state'], 'awaiting_selection')
@@ -393,7 +393,7 @@ class SelectionAPIAndConflictTests(SelectionSetup):
 
     def post(self, endpoint, data):
         req = urllib.request.Request(self.url + endpoint, json.dumps(data).encode(),
-                                     {'Content-Type': 'application/json', 'X-PlexPort': '1', 'Authorization': self.authorization})
+                                     {'Content-Type': 'application/json', 'X-JellyPort': '1', 'Authorization': self.authorization})
         try:
             response = urllib.request.urlopen(req)
         except urllib.error.HTTPError as error:
@@ -462,7 +462,7 @@ class SelectionAPIAndConflictTests(SelectionSetup):
         self.assertEqual(code, 201)
         code, error = self.post('/api/jobs', {**payload, 'confirmed_conflicts': [self.job['id'], result['id']]})
         self.assertEqual(code, 400)
-        self.assertIn('al in PlexPort', error['error'])
+        self.assertIn('al in JellyPort', error['error'])
         code, error = self.post('/api/jobs', {**payload, 'link': MAGNET + '&dn=third', 'confirmed_conflicts': [self.job['id']]})
         self.assertEqual((code, error['code']), (409, 'title_conflict'))
 

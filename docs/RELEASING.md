@@ -5,7 +5,7 @@ credentials and Android signing material outside the public repository. Website
 releases can use the existing signed Android APK because it loads the server UI.
 Do not describe an unpublished native source version as an available APK update.
 
-1. Update the server version in `plexport/__init__.py`, changelog, usage guide and
+1. Update the server version in `jellyport/__init__.py`, changelog, usage guide and
    feature status. Keep old release notes as history.
 2. Run the Python suite, JavaScript tests and syntax checks. Exercise the affected
    browser-to-API-to-task flows with isolated temporary data and local downloader

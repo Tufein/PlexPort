@@ -8,7 +8,7 @@ body:
   - type: dropdown
     id: apparaat
     attributes:
-      label: Where do you use PlexPort?
+      label: Where do you use JellyPort?
       options:
         - TrueNAS
         - Another NAS

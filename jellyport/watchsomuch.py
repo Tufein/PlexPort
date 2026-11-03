@@ -79,7 +79,7 @@ class Magnet(HTMLParser):
 
 
 def fetch(path):
-    return request(BASE + path, headers={'User-Agent': 'PlexPort/1.0'}, timeout=8).decode('utf-8-sig')
+    return request(BASE + path, headers={'User-Agent': 'JellyPort/1.0'}, timeout=8).decode('utf-8-sig')
 
 
 def size_bytes(text):

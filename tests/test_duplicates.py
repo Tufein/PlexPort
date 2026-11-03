@@ -1,7 +1,7 @@
 import copy
 import unittest
 
-from plexport.duplicates import title_conflicts
+from jellyport.duplicates import title_conflicts
 
 
 def movie(**changes):

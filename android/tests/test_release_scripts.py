@@ -36,7 +36,7 @@ class SigningSetupTests(unittest.TestCase):
     def test_partial_backup_is_never_replaced(self):
         private = self.root / '.signing'
         private.mkdir()
-        key = private / 'plexport-release.jks'
+        key = private / 'jellyport-release.jks'
         key.write_bytes(b'fixture existing key')
         result = self.run_setup()
         self.assertNotEqual(result.returncode, 0)
@@ -47,7 +47,7 @@ class SigningSetupTests(unittest.TestCase):
     def test_existing_backup_is_reused_without_reading_or_changing_it(self):
         private = self.root / '.signing'
         private.mkdir()
-        (private / 'plexport-release.jks').write_bytes(b'fixture existing key')
+        (private / 'jellyport-release.jks').write_bytes(b'fixture existing key')
         (private / 'signing.properties').write_text('fixture existing settings')
         before = {path.name: path.read_bytes() for path in private.iterdir()}
         result = self.run_setup()
@@ -84,11 +84,11 @@ class PublishingTests(unittest.TestCase):
     def test_matching_certificate_publishes_apk_and_checksum(self):
         target = self.publish()
         self.assertEqual(target.read_bytes(), self.built.read_bytes())
-        self.assertIn('  PlexPort-1.3.0.apk\n', target.with_suffix('.apk.sha256').read_text())
+        self.assertIn('  JellyPort-1.3.0.apk\n', target.with_suffix('.apk.sha256').read_text())
         self.assertEqual(self.previous.read_text(), 'a' * 64)
 
     def test_different_certificate_cannot_replace_existing_distribution(self):
-        target = self.root / 'dist/PlexPort-1.3.0.apk'
+        target = self.root / 'dist/JellyPort-1.3.0.apk'
         target.write_text('a' * 64)
         self.built.write_text('b' * 64)
         with self.assertRaisesRegex(SystemExit, 'wijkt af'):
@@ -100,20 +100,20 @@ class PublishingTests(unittest.TestCase):
         self.built.write_text('unsigned')
         with self.assertRaises(subprocess.CalledProcessError):
             self.publish()
-        self.assertFalse((self.root / 'dist/PlexPort-1.3.0.apk').exists())
+        self.assertFalse((self.root / 'dist/JellyPort-1.3.0.apk').exists())
 
     def test_missing_previous_apk_prevents_unverified_upgrade(self):
         self.previous.unlink()
         with self.assertRaisesRegex(SystemExit, 'gepubliceerde APK ontbreekt'):
             self.publish()
-        self.assertFalse((self.root / 'dist/PlexPort-1.3.0.apk').exists())
+        self.assertFalse((self.root / 'dist/JellyPort-1.3.0.apk').exists())
 
     def test_personal_build_remains_separate_from_published_apks(self):
         self.built.write_text('b' * 64)
         target = self.publish(personal=True)
-        self.assertEqual(target, self.root / 'dist/personal/PlexPort-1.3.0.apk')
+        self.assertEqual(target, self.root / 'dist/personal/JellyPort-1.3.0.apk')
         self.assertEqual(self.previous.read_text(), 'a' * 64)
-        self.assertFalse((self.root / 'dist/PlexPort-1.3.0.apk').exists())
+        self.assertFalse((self.root / 'dist/JellyPort-1.3.0.apk').exists())
 
 
 if __name__ == '__main__':

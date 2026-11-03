@@ -10,10 +10,10 @@ from unittest.mock import Mock, patch
 import urllib.parse
 import urllib.request
 
-from plexport import sources
-from plexport.core import Store, defaults, merge_settings, public_settings
-from plexport.integrations import search_source
-from plexport.server import create_server
+from jellyport import sources
+from jellyport.core import Store, defaults, merge_settings, public_settings
+from jellyport.integrations import search_source
+from jellyport.server import create_server
 
 HASH = 'a' * 40
 YTS = {'id': 'y', 'type': 'yts', 'name': 'My films', 'url': 'https://untrusted.invalid'}
@@ -46,7 +46,7 @@ class SourceAdaptersTests(unittest.TestCase):
         sources._cache.clear()
 
     def test_yts_uses_official_new_api_ignores_config_url_and_returns_confirmed_identity(self):
-        with patch('plexport.sources.fetch_json', return_value={'status': 'ok', 'data': {'movies': [film()]}}) as fetch:
+        with patch('jellyport.sources.fetch_json', return_value={'status': 'ok', 'data': {'movies': [film()]}}) as fetch:
             result = search_source(YTS, 'Sintel', 'movie')
         self.assertEqual(len(result), 1)
         row = result[0]
@@ -65,21 +65,21 @@ class SourceAdaptersTests(unittest.TestCase):
     def test_yts_preserves_versions_and_known_missing_year_does_not_get_guessed(self):
         movie = film(year=None)
         movie['torrents'].append({**movie['torrents'][0], 'hash': 'b' * 40, 'quality': '1080p'})
-        with patch('plexport.sources.fetch_json', return_value={'status': 'ok', 'data': {'movies': [movie]}}):
+        with patch('jellyport.sources.fetch_json', return_value={'status': 'ok', 'data': {'movies': [movie]}}):
             result = sources.search(YTS, 'Sint', 'movie')
         self.assertEqual(len(result), 2)
         self.assertEqual({row['year'] for row in result}, {''})
         self.assertEqual(len({row['link'] for row in result}), 2)
 
     def test_unsupported_media_and_actor_modes_make_no_request(self):
-        with patch('plexport.sources.fetch_json') as fetch:
+        with patch('jellyport.sources.fetch_json') as fetch:
             for source, kind, mode in [(YTS, 'tv', 'title'), (EZTV, 'movie', 'title'),
                                        (YTS, 'movie', 'actor'), (EZTV, 'tv', 'actor')]:
                 self.assertEqual(search_source(source, 'Query', kind, mode), [])
             fetch.assert_not_called()
 
     def test_empty_invalid_and_huge_queries_make_no_request(self):
-        with patch('plexport.sources.fetch_json') as fetch:
+        with patch('jellyport.sources.fetch_json') as fetch:
             for query in ('', 'x', '  ', '**', 'a' * 201, None, {}, 33):
                 with self.subTest(query=query), self.assertRaises(ValueError):
                     sources.search(YTS, query, 'movie')
@@ -91,7 +91,7 @@ class SourceAdaptersTests(unittest.TestCase):
                      {'status': 'ok', 'data': {'movie_count': 2}},
                      {'status': 'ok', 'data': {'movie_count': True}},
                      {'status': 'ok', 'data': {'movie_count': 3, 'movies': []}}):
-            with self.subTest(body=body), patch('plexport.sources.fetch_json', return_value=body) as fetch:
+            with self.subTest(body=body), patch('jellyport.sources.fetch_json', return_value=body) as fetch:
                 with self.assertRaisesRegex(ValueError, 'YTS'):
                     sources.search(YTS, 'Sintel', 'movie')
                 self.assertEqual(sources._cache, {})
@@ -100,14 +100,14 @@ class SourceAdaptersTests(unittest.TestCase):
         movies = [None, [], film(title='Unrelated'), film(info_hash='file:///evil'),
                   {'title': 'Sintel', 'torrents': {}}, film()]
         movies[-1]['torrents'] = [None, {}, {**movies[-1]['torrents'][0], 'seeds': True, 'size_bytes': -5}]
-        with patch('plexport.sources.fetch_json', return_value={'status': 'ok', 'data': {'movies': movies}}):
+        with patch('jellyport.sources.fetch_json', return_value={'status': 'ok', 'data': {'movies': movies}}):
             rows = sources.search(YTS, 'Sintel', 'movie')
         self.assertEqual(len(rows), 1)
         self.assertEqual((rows[0]['seeders'], rows[0]['size']), (0, 0))
 
     def test_eztv_matches_tvmaze_names_before_imdb_lookup_and_uses_confirmed_show_year(self):
         suggestions = [show('Unrelated'), show('Cosmos', imdb=None), show(), show('COSMOS', premiered='2020-01-01')]
-        with patch('plexport.sources.fetch_json', side_effect=[suggestions, episodes([episode()])]) as fetch:
+        with patch('jellyport.sources.fetch_json', side_effect=[suggestions, episodes([episode()])]) as fetch:
             rows = sources.search(EZTV, 'Cosmos', 'tv')
         self.assertEqual(fetch.call_count, 2)
         self.assertEqual(urllib.parse.parse_qs(urllib.parse.urlsplit(fetch.call_args_list[0].args[0]).query), {'q': ['Cosmos']})
@@ -126,7 +126,7 @@ class SourceAdaptersTests(unittest.TestCase):
         self.assertTrue(sources._compatible('Cosmos', 'Cos'))
         self.assertTrue(sources._compatible('Séries: One', 'series one'))
         self.assertFalse(sources._compatible('The Winter', 'Sintel'))
-        with patch('plexport.sources.fetch_json', return_value=[show('The Winter'), show('Sister Wives')]) as fetch:
+        with patch('jellyport.sources.fetch_json', return_value=[show('The Winter'), show('Sister Wives')]) as fetch:
             self.assertEqual(sources.search(EZTV, 'Sintel', 'tv'), [])
             self.assertEqual(fetch.call_count, 1)
 
@@ -135,7 +135,7 @@ class SourceAdaptersTests(unittest.TestCase):
                     episode('Cosmos S01E01-E03 720p', info_hash='c' * 40),
                     episode('Cosmos S01 COMPLETE', info_hash='d' * 40),
                     episode('Cosmos S01E01 S02E01', info_hash='e' * 40)]
-        with patch('plexport.sources.fetch_json', side_effect=[[show()], episodes(torrents)]) as fetch:
+        with patch('jellyport.sources.fetch_json', side_effect=[[show()], episodes(torrents)]) as fetch:
             rows = sources.search(EZTV, 'Cosmos S01E01', 'tv')
         self.assertEqual(urllib.parse.parse_qs(urllib.parse.urlsplit(fetch.call_args_list[0].args[0]).query), {'q': ['Cosmos']})
         self.assertEqual([row['episode'] for row in rows], ['', '', '', ''])
@@ -144,15 +144,15 @@ class SourceAdaptersTests(unittest.TestCase):
     def test_eztv_invalid_show_and_torrent_shapes_are_skipped_or_reported(self):
         suggestions = [None, {}, {'show': []}, show(imdb='ttBAD'), show(title='Cosmos\nInjected'), show()]
         torrents = [None, {}, episode(imdb='9999999'), episode(info_hash='not-a-hash'), episode()]
-        with patch('plexport.sources.fetch_json', side_effect=[suggestions, episodes(torrents)]):
+        with patch('jellyport.sources.fetch_json', side_effect=[suggestions, episodes(torrents)]):
             self.assertEqual(len(sources.search(EZTV, 'Cosmos', 'tv')), 1)
         for payloads in ([{}], [[show()], []], [[show()], {'torrents': {}}]):
             sources._cache.clear()
-            with patch('plexport.sources.fetch_json', side_effect=payloads), self.assertRaises(ValueError):
+            with patch('jellyport.sources.fetch_json', side_effect=payloads), self.assertRaises(ValueError):
                 sources.search(EZTV, 'Cosmos', 'tv')
 
     def test_missing_premiere_is_unknown_instead_of_release_year_and_link_is_canonical(self):
-        with patch('plexport.sources.fetch_json', side_effect=[[show(premiered=None, show_id='unsafe')], episodes([episode()])]):
+        with patch('jellyport.sources.fetch_json', side_effect=[[show(premiered=None, show_id='unsafe')], episodes([episode()])]):
             row = sources.search(EZTV, 'Cosmos', 'tv')[0]
         self.assertEqual(row['year'], '')
         self.assertEqual(row['metadata_url'], 'https://www.tvmaze.com')
@@ -163,7 +163,7 @@ class SourceAdaptersTests(unittest.TestCase):
             movie = film(title='Sintel ' + str(i))
             movie['torrents'] = [{**movie['torrents'][0], 'hash': f'{i * 30 + j:040x}'} for j in range(30)]
             movies.append(movie)
-        with patch('plexport.sources.fetch_json', return_value={'status': 'ok', 'data': {'movies': movies}}) as fetch:
+        with patch('jellyport.sources.fetch_json', return_value={'status': 'ok', 'data': {'movies': movies}}) as fetch:
             rows = sources.search(YTS, 'Sintel', 'movie')
         self.assertEqual(len(rows), 250)
         self.assertEqual(fetch.call_count, 1)
@@ -177,39 +177,39 @@ class SourceAdaptersTests(unittest.TestCase):
                 return suggestions
             imdb = params['imdb_id'][0]
             return episodes([episode('Cosmos S01E01 720p', info_hash=f'{int(imdb) * 1000 + i:040x}', imdb=imdb) for i in range(1000)], imdb)
-        with patch('plexport.sources.fetch_json', side_effect=fetch) as request:
+        with patch('jellyport.sources.fetch_json', side_effect=fetch) as request:
             rows = sources.search(EZTV, 'Cosmos', 'tv')
         self.assertEqual(request.call_count, 4)
         self.assertEqual(len(rows), 250)
         self.assertEqual(len({row['link'] for row in rows}), 250)
 
     def test_cache_is_short_bounded_shared_by_provider_and_rename_safe_with_no_disk_history(self):
-        with patch('plexport.sources.fetch_json', return_value={'status': 'ok', 'data': {'movies': [film()]}}) as fetch:
-            with patch('plexport.sources.time.monotonic', return_value=10):
+        with patch('jellyport.sources.fetch_json', return_value={'status': 'ok', 'data': {'movies': [film()]}}) as fetch:
+            with patch('jellyport.sources.time.monotonic', return_value=10):
                 first = sources.search(YTS, 'Sintel', 'movie')
             first[0]['library_title'] = 'Changed in browser'
-            with patch('plexport.sources.time.monotonic', return_value=309):
+            with patch('jellyport.sources.time.monotonic', return_value=309):
                 second = sources.search({**YTS, 'name': 'Renamed'}, 'SINTEL', 'movie')
             self.assertEqual(fetch.call_count, 1)
             self.assertEqual(second[0]['source'], 'Renamed')
             self.assertEqual(second[0]['library_title'], 'Sintel')
-            with patch('plexport.sources.time.monotonic', return_value=310):
+            with patch('jellyport.sources.time.monotonic', return_value=310):
                 sources.search(YTS, 'Sintel', 'movie')
             self.assertEqual(fetch.call_count, 2)
         sources._cache.clear()
-        with patch('plexport.sources.fetch_json', return_value={'status': 'ok', 'data': {'movies': []}}):
+        with patch('jellyport.sources.fetch_json', return_value={'status': 'ok', 'data': {'movies': []}}):
             for i in range(40):
                 sources.search(YTS, 'Title ' + str(i), 'movie')
         self.assertEqual(len(sources._cache), 32)
         self.assertNotIn(('yts', 'title 0', 'movie'), sources._cache)
 
     def test_empty_results_cache_but_network_errors_remain_actionable_and_not_cached(self):
-        with patch('plexport.sources.fetch_json', return_value={'status': 'ok', 'data': {'movie_count': 0}}) as fetch:
+        with patch('jellyport.sources.fetch_json', return_value={'status': 'ok', 'data': {'movie_count': 0}}) as fetch:
             self.assertEqual(sources.search(YTS, 'Missing', 'movie'), [])
             self.assertEqual(sources.search(YTS, 'Missing', 'movie'), [])
             self.assertEqual(fetch.call_count, 1)
         sources._cache.clear()
-        with patch('plexport.sources.fetch_json', side_effect=TimeoutError):
+        with patch('jellyport.sources.fetch_json', side_effect=TimeoutError):
             with self.assertRaises(TimeoutError):
                 sources.search(YTS, 'Missing', 'movie')
         self.assertEqual(sources._cache, {})
@@ -220,11 +220,11 @@ class SourceAdaptersTests(unittest.TestCase):
                         {'imdb_id': '9999999', 'torrents_count': 0},
                         {'imdb_id': '2395695', 'torrents_count': 0, 'torrents': [episode()]}):
             sources._cache.clear()
-            with self.subTest(payload=payload), patch('plexport.sources.fetch_json', side_effect=[[show()], payload]):
+            with self.subTest(payload=payload), patch('jellyport.sources.fetch_json', side_effect=[[show()], payload]):
                 with self.assertRaisesRegex(ValueError, 'EZTV'):
                     sources.search(EZTV, 'Cosmos', 'tv')
                 self.assertEqual(sources._cache, {})
-        with patch('plexport.sources.fetch_json', side_effect=[[show()], {'imdb_id': '2395695', 'torrents_count': 0}]):
+        with patch('jellyport.sources.fetch_json', side_effect=[[show()], {'imdb_id': '2395695', 'torrents_count': 0}]):
             self.assertEqual(sources.search(EZTV, 'Cosmos', 'tv'), [])
 
     def test_season_only_and_zero_placeholder_never_become_confirmed_single_episode(self):
@@ -255,7 +255,7 @@ class ProviderTransportAndMagnetTests(unittest.TestCase):
         response.geturl.return_value = sources.YTS_API
         opener = Mock()
         opener.open.return_value = response
-        with patch('plexport.sources.urllib.request.build_opener', return_value=opener):
+        with patch('jellyport.sources.urllib.request.build_opener', return_value=opener):
             response.read.return_value = b'{"status":"ok"}'
             self.assertEqual(sources.fetch_json(sources.YTS_API), {'status': 'ok'})
             self.assertEqual(opener.open.call_args.kwargs['timeout'], 8)
@@ -297,7 +297,7 @@ class SourceSettingsAndHTTPTests(unittest.TestCase):
     def get(self, kind='movie', mode='title'):
         connection = http.client.HTTPConnection('127.0.0.1', self.server.server_port, timeout=3)
         path = '/api/search?' + urllib.parse.urlencode({'q': 'Cosmos', 'kind': kind, 'mode': mode})
-        connection.request('GET', path, headers={'Authorization': self.authorization, 'X-PlexPort': '1'})
+        connection.request('GET', path, headers={'Authorization': self.authorization, 'X-JellyPort': '1'})
         response = connection.getresponse()
         status, body = response.status, json.loads(response.read())
         connection.close()
@@ -325,7 +325,7 @@ class SourceSettingsAndHTTPTests(unittest.TestCase):
 
     def test_search_dispatches_only_compatible_sources_and_keeps_actor_only_wsm(self):
         self.store.save_settings({'sources': [YTS, EZTV, {'id': 'w', 'name': 'WSM', 'type': 'watchsomuch'}]})
-        with patch('plexport.server.search_source', return_value=[]) as fetch:
+        with patch('jellyport.server.search_source', return_value=[]) as fetch:
             code, body = self.get('movie')
             self.assertEqual(code, 200)
             self.assertEqual(body['searched_sources'], 2)
@@ -343,7 +343,7 @@ class SourceSettingsAndHTTPTests(unittest.TestCase):
 
     def test_incompatible_sources_have_actionable_message_and_no_provider_request(self):
         self.store.save_settings({'sources': [YTS]})
-        with patch('plexport.server.search_source') as fetch:
+        with patch('jellyport.server.search_source') as fetch:
             code, body = self.get('tv')
             self.assertEqual(code, 400)
             self.assertIn('series', body['error'])
@@ -358,7 +358,7 @@ class SourceSettingsAndHTTPTests(unittest.TestCase):
             if source['type'] == 'yts':
                 raise TimeoutError()
             return [{'title': 'Cosmos', 'library_title': 'Cosmos', 'link': 'magnet:?xt=urn:btih:' + HASH, 'seeders': 3}]
-        with patch('plexport.server.search_source', side_effect=fetch):
+        with patch('jellyport.server.search_source', side_effect=fetch):
             code, body = self.get('movie')
         self.assertEqual(code, 200)
         self.assertEqual(len(body['results']), 1)
@@ -367,7 +367,7 @@ class SourceSettingsAndHTTPTests(unittest.TestCase):
 
     def test_all_attempted_sources_failure_count_excludes_incompatible_configured_sources(self):
         self.store.save_settings({'sources': [YTS, EZTV]})
-        with patch('plexport.server.search_source', side_effect=TimeoutError()) as fetch:
+        with patch('jellyport.server.search_source', side_effect=TimeoutError()) as fetch:
             code, body = self.get('movie')
         self.assertEqual(code, 200)
         self.assertEqual(body['results'], [])

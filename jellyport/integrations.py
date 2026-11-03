@@ -35,7 +35,7 @@ def single_torrent(torrent_id):
 
 def same_download_dir(actual, expected):
     if not expected or actual.replace('\\', '/').rstrip('/') != expected.replace('\\', '/').rstrip('/'):
-        raise ValueError('De downloadmap is veranderd. Verwijder de bestanden rechtstreeks in je downloader; PlexPort heeft niets gewist.')
+        raise ValueError('De downloadmap is veranderd. Verwijder de bestanden rechtstreeks in je downloader; JellyPort heeft niets gewist.')
 
 
 class Transmission:
@@ -177,20 +177,23 @@ class QBittorrent:
         return 'qBittorrent ' + self.call('app/version').decode()
 
     def find(self, job):
-        tag = 'plexport-' + job['id']
-        existing = json.loads(self.call('torrents/info?' + urllib.parse.urlencode({'tag': tag})))
+        existing = []
+        for prefix in ('jellyport-', 'plexport-'):
+            existing = json.loads(self.call('torrents/info?' + urllib.parse.urlencode({'tag': prefix + job['id']})))
+            if existing:
+                break
         if len(existing) > 1:
             raise ValueError('Er staan meerdere torrents bij deze taak. Controleer qBittorrent.')
         return existing[0]['hash'] if existing else ''
 
     def add(self, job):
-        tag = 'plexport-' + job['id']
+        tag = 'jellyport-' + job['id']
         existing = self.find(job)
         if existing:
             return existing
         data = {'savepath': job['remote_dir'], 'tags': tag, 'autoTMM': 'false'}
         if job.get('metainfo'):
-            boundary = 'PlexPort' + job['id']
+            boundary = 'JellyPort' + job['id']
             body = b''
             for key, value in data.items():
                 body += f'--{boundary}\r\nContent-Disposition: form-data; name="{key}"\r\n\r\n{value}\r\n'.encode()
@@ -296,25 +299,32 @@ def client(config):
     return QBittorrent(config) if config['type'] == 'qbittorrent' else Transmission(config)
 
 
-def plex_sections(config):
+def jellyfin_headers(config):
+    return {'Authorization': 'MediaBrowser Token="' + config['token'].replace('"', '') + '"', 'Accept': 'application/json'}
+
+
+def jellyfin_sections(config):
     if not config.get('url') or not config.get('token'):
-        raise ValueError('Vul het Plex-adres en je Plex-token in bij Instellingen.')
-    body = request(http_url(config['url']) + '/library/sections', headers={'X-Plex-Token': config['token']})
-    root = ET.fromstring(body)
-    return [{'id': e.attrib['key'], 'title': e.attrib.get('title', ''), 'type': e.attrib.get('type', '')} for e in root.findall('Directory')]
+        raise ValueError('Vul het Jellyfin-adres en je Jellyfin-API-sleutel in bij Instellingen.')
+    body = request(http_url(config['url']).rstrip('/') + '/Library/VirtualFolders', headers=jellyfin_headers(config))
+    items = json.loads(body)
+    if not isinstance(items, list):
+        raise ValueError('Jellyfin gaf een onverwacht antwoord.')
+    return [{'id': str(e.get('ItemId', '')), 'title': str(e.get('Name', '')), 'type': str(e.get('CollectionType', ''))} for e in items if isinstance(e, dict) and e.get('ItemId')]
 
 
-def plex_scan(config, kind):
+def jellyfin_scan(config, kind):
     key = config.get('movie_section' if kind == 'movie' else 'tv_section')
     if not key:
-        raise ValueError('Kies de bijbehorende Plex-bibliotheek bij Instellingen.')
+        raise ValueError('Kies de bijbehorende Jellyfin-bibliotheek bij Instellingen.')
     if not re_section(key):
-        raise ValueError('Ongeldig Plex-bibliotheeknummer.')
-    request(http_url(config['url']) + '/library/sections/' + key + '/refresh', headers={'X-Plex-Token': config['token']})
+        raise ValueError('Ongeldig Jellyfin-bibliotheek-ID.')
+    query = urllib.parse.urlencode({'Recursive': 'true', 'ImageRefreshMode': 'Default', 'MetadataRefreshMode': 'Default', 'ReplaceAllImages': 'false', 'ReplaceAllMetadata': 'false'})
+    request(http_url(config['url']).rstrip('/') + '/Items/' + key + '/Refresh?' + query, data=b'', headers=jellyfin_headers(config))
 
 
 def re_section(value):
-    return isinstance(value, str) and value.isdigit()
+    return isinstance(value, str) and re.fullmatch(r'[a-fA-F0-9]{32}|[a-fA-F0-9]{8}(-[a-fA-F0-9]{4}){3}-[a-fA-F0-9]{12}', value) is not None
 
 
 def search_source(source, query, kind, mode='title'):
