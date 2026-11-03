@@ -1,5 +1,7 @@
 # JellyPort on your NAS with qBittorrent
 
+> **Transmission (default):** JellyPort defaults to Transmission via its RPC address, for example `http://192.168.1.75:9091/transmission/rpc`. Choose **Transmission** under Downloader, enter your Transmission username and password if RPC authentication is on, and set the download folder as Transmission sees it plus the same folder as JellyPort sees it (for example `/Home/Downloads`). Transmission may require JellyPort's host in its RPC whitelist. qBittorrent is still supported and the steps below that mention it still apply to it; existing qBittorrent tasks keep working.
+
 This setup uses your existing qBittorrent and Jellyfin. JellyPort runs in its own Docker container on the NAS.
 
 For **TrueNAS 25.10 Goldeye**, use the dedicated [TrueNAS guide](INSTALLATIE-TRUENAS.md) with `compose.yaml`. `compose.truenas.yaml` is an equivalent alias. That setup uses explicit NAS paths and can be installed through **Install via YAML**; it does not use `.env`.

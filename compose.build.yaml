@@ -7,9 +7,9 @@ services:
       - "8765:8765"
     environment:
       JELLYPORT_PASSWORD: ${JELLYPORT_PASSWORD:?Vul JELLYPORT_PASSWORD in .env in}
-      DOWNLOADER_TYPE: qbittorrent
-      QBITTORRENT_URL: ${QBITTORRENT_URL:-}
-      DOWNLOADER_ROOT: ${QBITTORRENT_DOWNLOAD_ROOT:-/downloads}
+      DOWNLOADER_TYPE: transmission
+      TRANSMISSION_URL: ${TRANSMISSION_URL:-http://192.168.1.75:9091/transmission/rpc}
+      DOWNLOADER_ROOT: ${TRANSMISSION_DOWNLOAD_ROOT:-/downloads}
     volumes:
       - ./data:/data
       - type: bind

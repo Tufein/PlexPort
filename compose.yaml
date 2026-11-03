@@ -1,5 +1,5 @@
 # Voorbeeld voor TrueNAS: pas NAS-adres, datasetpaden, UID/GID en wachtwoord aan.
-# Koppel in de qBittorrent-app exact dezelfde downloadbron als /downloads.
+# Koppel in de Transmission-app exact dezelfde downloadbron als /downloads.
 services:
   jellyport:
     image: python:3.13-slim
@@ -18,9 +18,9 @@ services:
       JELLYPORT_DATA: /data
       JELLYPORT_DOWNLOADS: /downloads
       JELLYPORT_MEDIA: /media
-      DOWNLOADER_TYPE: qbittorrent
-      QBITTORRENT_URL: "http://192.168.1.100:30024"
-      QBITTORRENT_USER: ""
+      DOWNLOADER_TYPE: transmission
+      TRANSMISSION_URL: "http://192.168.1.75:9091/transmission/rpc"
+      TRANSMISSION_USER: ""
       DOWNLOADER_ROOT: /downloads
     volumes:
       - type: bind

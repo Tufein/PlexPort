@@ -90,7 +90,7 @@ def env(name, default=''):
 def defaults():
     media = Path(env('MEDIA', './media')).resolve()
     downloads = str(Path(env('DOWNLOADS', './downloads')).resolve())
-    downloader_type = os.environ.get('DOWNLOADER_TYPE', 'qbittorrent')
+    downloader_type = os.environ.get('DOWNLOADER_TYPE', 'transmission')
     return {'downloader': {'type': downloader_type, 'url': os.environ.get('TRANSMISSION_URL', 'http://127.0.0.1:9091/transmission/rpc') if downloader_type == 'transmission' else os.environ.get('QBITTORRENT_URL', ''),
                            'username': os.environ.get('TRANSMISSION_USER', '') if downloader_type == 'transmission' else os.environ.get('QBITTORRENT_USER', ''), 'password': os.environ.get('TRANSMISSION_PASSWORD', '') if downloader_type == 'transmission' else '',
                            'remote_root': os.environ.get('DOWNLOADER_ROOT', downloads), 'local_root': downloads},
