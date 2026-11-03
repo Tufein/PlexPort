@@ -37,7 +37,7 @@ JellyPort puts completed videos in the right media folder.
 
 ## What do you need?
 
-**Jellyfin** to watch your movies and shows, **Transmission (default) or qBittorrent** to download files, and a computer or **NAS** — a storage device on your home network — that can keep JellyPort running.
+**Jellyfin or Plex** to watch your movies and shows (both can be set up at once), **Transmission (default) or qBittorrent** to download files, and a computer or **NAS** — a storage device on your home network — that can keep JellyPort running.
 
 JellyPort connects these parts. It does not replace Jellyfin or your downloader. You choose your own search sources, and there is no JellyPort subscription.
 

@@ -4,7 +4,7 @@
 
 ## Available now
 
-Website/server **2.0.0** replaces Plex with Jellyfin (JellyPort). Version 1.9.0 added a per-download speed limit for qBittorrent and Transmission tasks. Version 1.8.0 added direct YTS movie and EZTV TV sources alongside WatchSoMuch and Torznab. Result cards show one recommended eligible version, with other versions collapsed until opened. Source details and limits are documented in [Search sources](docs/SOURCES.md).
+Website/server **2.1.0** supports Jellyfin and Plex (JellyPort, renamed from PlexPort), with custom per-task download/upload limits, import of existing qBittorrent downloads and optional webhook notifications. Version 1.9.0 added a per-download speed limit for qBittorrent and Transmission tasks. Version 1.8.0 added direct YTS movie and EZTV TV sources alongside WatchSoMuch and Torznab. Result cards show one recommended eligible version, with other versions collapsed until opened. Source details and limits are documented in [Search sources](docs/SOURCES.md).
 
 Version 1.7.0 adds warnings about titles already in JellyPort history, an observed hardlink/copy space estimate and opt-in TV file selection for qBittorrent and Transmission. Download metadata can contact peers before selection; importing waits for a confirmed choice. These checks do not inspect the full Jellyfin library or reserve disk space.
 

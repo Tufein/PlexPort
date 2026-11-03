@@ -18,7 +18,8 @@ import webbrowser
 
 from . import __version__
 from .core import APIConflict, Store, env, Worker, defaults, friendly_error, public_job, public_settings, storage_report
-from .integrations import client, jellyfin_scan, jellyfin_sections, search_source
+from .integrations import client, jellyfin_sections, media_servers, plex_sections, scan_media_servers, search_source
+from . import notifications
 from .posters import PosterCache
 from .search import prepare_query, filter_results
 from .sources import supports
@@ -273,15 +274,20 @@ def create_server(host, port, store, password=''):
                         if (previous['library'] != current['library']
                                 or previous['downloader']['local_root'] != current['downloader']['local_root']):
                             checks.pop('storage', None)
-                        if previous['jellyfin'] != current['jellyfin']:
-                            checks.pop('jellyfin', None)
+                        for server in ('jellyfin', 'plex'):
+                            if previous[server] != current[server]:
+                                checks.pop(server, None)
                     self.send(result)
                 elif self.path == '/api/jobs':
                     self.send(worker.enqueue(data), 201)
                 elif self.path == '/api/action':
                     self.send(worker.action(str(data.get('id', '')), str(data.get('action', '')),
                                             data.get('delete_files', False), data.get('forget', False),
-                                            data.get('download_limit_mb')))
+                                            data.get('download_limit_mb'), data.get('upload_limit_mb')))
+                elif self.path == '/api/existing':
+                    self.send(worker.existing_downloads())
+                elif self.path == '/api/adopt':
+                    self.send(worker.adopt(data), 201)
                 elif self.path == '/api/preflight':
                     self.send(worker.preflight(data))
                 elif self.path == '/api/files':
@@ -299,6 +305,10 @@ def create_server(host, port, store, password=''):
                             sections = jellyfin_sections(config['jellyfin'])
                             message = 'Jellyfin bereikbaar · ' + str(len(sections)) + ' bibliotheken'
                             extra = {'sections': sections}
+                        elif target == 'plex':
+                            sections = plex_sections(config['plex'])
+                            message = 'Plex bereikbaar · ' + str(len(sections)) + ' bibliotheken'
+                            extra = {'sections': sections}
                         elif target == 'storage':
                             report = storage_report(config)
                             failed = next((f for f in report['folders'] if not f['ok']), None)
@@ -307,7 +317,13 @@ def create_server(host, port, store, password=''):
                                 self.send({'message': failed['message'], **report}, 400)
                                 return
                             extra = {'folders': report['folders'], 'free': min(f['free'] for f in report['folders'])}
-                            message = 'Download- en Jellyfin-mappen zijn bereikbaar'
+                            message = 'Download- en mediamappen zijn bereikbaar'
+                        elif target == 'notifications':
+                            if not config['notifications']['webhook_url']:
+                                raise ValueError('Vul eerst een webhook-adres in en sla het op.')
+                            notifications.send(config['notifications']['webhook_url'], 'JellyPort', 'Dit is een testmelding.')
+                            message = 'Testmelding verstuurd. Controleer of hij is aangekomen.'
+                            extra = {}
                         else:
                             raise ValueError('Onbekende verbinding.')
                         checks[target] = {'ok': True, 'message': message}
@@ -317,8 +333,11 @@ def create_server(host, port, store, password=''):
                         checks[target] = {'ok': False, 'message': message}
                         self.send({'ok': False, 'message': message}, 400)
                 elif self.path == '/api/scan':
-                    jellyfin_scan(store.settings()['jellyfin'], data.get('kind', 'movie'))
-                    self.send({'message': 'Jellyfin-bibliotheekscan aangevraagd.'})
+                    settings = store.settings()
+                    if not media_servers(settings):
+                        raise ValueError('Stel eerst Jellyfin of Plex in om te kunnen scannen.')
+                    scan_media_servers(settings, data.get('kind', 'movie'))
+                    self.send({'message': 'Bibliotheekscan aangevraagd.'})
                 else:
                     self.send({'error': 'Niet gevonden.'}, 404)
             except APIConflict as e:

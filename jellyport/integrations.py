@@ -142,6 +142,13 @@ class Transmission:
             args['downloadLimit'] = max(1, limit // 1000)
         self.rpc('torrent-set', args)
 
+    def set_upload_limit(self, torrent_id, bytes_per_second):
+        limit = int(bytes_per_second)
+        args = {'ids': [single_torrent(torrent_id)], 'uploadLimited': limit > 0}
+        if limit > 0:
+            args['uploadLimit'] = max(1, limit // 1000)
+        self.rpc('torrent-set', args)
+
     def remove(self, torrent_id, delete_files=False, expected_dir=None):
         torrent_id = single_torrent(torrent_id)
         if delete_files:
@@ -269,6 +276,15 @@ class QBittorrent:
         # Only this torrent's own limit changes; the global rate settings stay untouched.
         self.call('torrents/setDownloadLimit', {'hashes': single_torrent(torrent_id), 'limit': max(0, int(bytes_per_second))})
 
+    def list_completed(self):
+        items = json.loads(self.call('torrents/info?' + urllib.parse.urlencode({'filter': 'completed'})))
+        return [{'id': t['hash'].lower(), 'name': str(t.get('name', '')), 'size': int(t.get('size') or 0),
+                 'save_dir': str(t.get('save_path', '')), 'tags': str(t.get('tags', ''))}
+                for t in items if re.fullmatch(r'[0-9a-fA-F]{40}', str(t.get('hash', '')))]
+
+    def set_upload_limit(self, torrent_id, bytes_per_second):
+        self.call('torrents/setUploadLimit', {'hashes': single_torrent(torrent_id), 'limit': max(0, int(bytes_per_second))})
+
     def remove(self, torrent_id, delete_files=False, expected_dir=None):
         torrent_id = single_torrent(torrent_id)
         if delete_files:
@@ -321,6 +337,40 @@ def jellyfin_scan(config, kind):
         raise ValueError('Ongeldig Jellyfin-bibliotheek-ID.')
     query = urllib.parse.urlencode({'Recursive': 'true', 'ImageRefreshMode': 'Default', 'MetadataRefreshMode': 'Default', 'ReplaceAllImages': 'false', 'ReplaceAllMetadata': 'false'})
     request(http_url(config['url']).rstrip('/') + '/Items/' + key + '/Refresh?' + query, data=b'', headers=jellyfin_headers(config))
+
+
+def plex_sections(config):
+    if not config.get('url') or not config.get('token'):
+        raise ValueError('Vul het Plex-adres en je Plex-token in bij Instellingen.')
+    body = request(http_url(config['url']).rstrip('/') + '/library/sections', headers={'X-Plex-Token': config['token']})
+    root = ET.fromstring(body)
+    return [{'id': e.attrib['key'], 'title': e.attrib.get('title', ''), 'type': e.attrib.get('type', '')} for e in root.findall('Directory')]
+
+
+def plex_scan(config, kind):
+    key = config.get('movie_section' if kind == 'movie' else 'tv_section')
+    if not key:
+        raise ValueError('Kies de bijbehorende Plex-bibliotheek bij Instellingen.')
+    if not (isinstance(key, str) and key.isdigit()):
+        raise ValueError('Ongeldig Plex-bibliotheeknummer.')
+    request(http_url(config['url']).rstrip('/') + '/library/sections/' + key + '/refresh', headers={'X-Plex-Token': config['token']})
+
+
+def media_servers(settings):
+    """Names of the configured media servers (address and token present)."""
+    return [name for name in ('jellyfin', 'plex') if settings.get(name, {}).get('url') and settings.get(name, {}).get('token')]
+
+
+def scan_media_servers(settings, kind):
+    """Ask every configured media server to scan; report all failures together."""
+    errors = []
+    for name in media_servers(settings):
+        try:
+            (jellyfin_scan if name == 'jellyfin' else plex_scan)(settings[name], kind)
+        except Exception as e:
+            errors.append(('Jellyfin' if name == 'jellyfin' else 'Plex') + ': ' + str(e))
+    if errors:
+        raise ValueError(' · '.join(errors))
 
 
 def re_section(value):

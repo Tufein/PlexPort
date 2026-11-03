@@ -1,0 +1,26 @@
+manifestVersion: 1
+id: tufein-jellyport
+category: media
+name: JellyPort
+version: "2.1.0"
+tagline: Van download naar je Jellyfin-bibliotheek
+description: >-
+  JellyPort verbindt je zoekbronnen en torrent-downloader (Transmission of qBittorrent) met je
+  bestaande Jellyfin- of Plex-mappen. Zoek een titel, start de download en voltooide films en
+  series worden automatisch in de juiste map geplaatst en je bibliotheek wordt gescand.
+
+
+  Je kiest zelf je bronnen; JellyPort levert geen content en heeft geen abonnement.
+developer: Tufein
+website: https://github.com/Tufein/JellyPort
+repo: https://github.com/Tufein/JellyPort
+support: https://github.com/Tufein/JellyPort/issues
+port: 8765
+gallery: []
+path: ""
+deterministicPassword: true
+releaseNotes: >-
+  Ondersteunt Jellyfin en Plex samen, eigen snelheidslimieten per download, import van bestaande
+  qBittorrent-downloads en optionele webhook-meldingen.
+submitter: Tufein
+submission: https://github.com/Tufein/JellyPort
